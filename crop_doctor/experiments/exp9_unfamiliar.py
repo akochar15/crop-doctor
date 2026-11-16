@@ -40,7 +40,7 @@ from sklearn.metrics import roc_auc_score
 
 from crop_doctor import config
 from crop_doctor.model.backends import OnnxBackend
-from crop_doctor.model.crops import crop_of, crops_from_labels, mask_logits
+from crop_doctor.model.crops import crops_from_labels, mask_logits
 from crop_doctor.uncertainty.calibration import softmax
 from crop_doctor.uncertainty.conformal import group_prediction_sets, uniform_noise
 

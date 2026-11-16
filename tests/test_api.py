@@ -80,6 +80,10 @@ def test_expert_endpoints_need_the_key_and_work(client):
     farmer = client.get(f"/api/cases/{c['id']}").json()
     assert farmer["status"] == "expert_answered" and farmer["messages"][-1]["role"] == "expert"
     assert client.get("/api/expert/answered", headers=EXPERT).json()["retraining_pool"] >= 1
+    # A second answer for the same case is refused: it would calibrate on the same photo twice.
+    again = client.post(f"/api/expert/cases/{c['id']}", json={"label": item["options"][0]["label"]}, headers=EXPERT)
+    assert again.status_code == 409
+    assert [m["role"] for m in client.get(f"/api/cases/{c['id']}").json()["messages"]].count("expert") == 1
 
 
 def test_trust_meter_controls(client):

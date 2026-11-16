@@ -485,6 +485,8 @@ def reply(assessment: dict, question: str | None = None, history: list[dict] | N
 
 def _ask_claude(system: str, history: list[dict], user_text: str) -> str:
     import anthropic
+    while history and history[0]["role"] != "user":      # the last-6 window can start on one of our own replies
+        history = history[1:]
     client = anthropic.Anthropic()
     resp = client.with_options(timeout=60.0, max_retries=1).beta.messages.create(
         model=MODEL,

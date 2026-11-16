@@ -8,7 +8,6 @@ Also: a threshold chosen on LAB photos to keep errors at <= 2%: what happens to 
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 from crop_doctor.experiments.common import FIELD, INK_2, LAB, load, save_fig, save_metrics, style
 from crop_doctor.uncertainty.calibration import softmax

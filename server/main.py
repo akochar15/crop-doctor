@@ -20,6 +20,7 @@ import hmac
 import io
 import json
 import logging
+import math
 import os
 import secrets
 import time
@@ -140,10 +141,15 @@ class Guard:
 
 
 def finite(value):
-    """JSON has no "infinity" (an empty calibration gives q-hat = inf): show it as null, also inside dicts."""
+    """JSON has no "infinity" or "not a number" (an empty calibration gives q-hat = inf): show them as null,
+    also inside dicts and lists."""
     if isinstance(value, dict):
         return {k: finite(v) for k, v in value.items()}
-    return None if isinstance(value, float) and value == float("inf") else value
+    if isinstance(value, (list, tuple)):
+        return [finite(v) for v in value]
+    return None if isinstance(value, float) and not math.isfinite(value) else value
+
+
 LANGUAGES = ["English", "Hindi", "Tamil", "Telugu", "Marathi", "Kannada", "Bengali", "Punjabi"]
 STATE: dict = {}
 
@@ -427,6 +433,10 @@ def expert_answer(cid: int, body: ExpertAnswer):
     valid = [d for d in doctor().classes if knowledge()["diseases"][d]["crop"] == case["crop"]] + EXPERT_SPECIAL
     if body.label not in valid:
         raise HTTPException(400, f"label must be one of {valid}")
+    if case["expert_label"]:
+        # A second answer (double click, two experts on one queue) would add the same photo to the live
+        # calibration twice and post two expert replies to the farmer.
+        raise HTTPException(409, "This case already has an expert answer")
     run = service.expert_answer(doctor(), cid, body.label, body.note.strip())
     return {"recalibrated": run is not None, "run": finite(run) if run else None}
 

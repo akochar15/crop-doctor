@@ -108,8 +108,13 @@ def answer_extent(doctor, cid: int, value: str, language: str | None = None) -> 
     opt = next(o for o in knowledge()["extent_question"]["options"] if o["value"] == value)
     db.add_message(cid, "farmer", opt["text"])
     a = reassess(doctor, cid, extent=value, language=language)
-    u = a["urgency"]
-    db.add_message(cid, "assistant", llm.urgency_text(u, language), {"status": a["status"]})
+    u = a.get("urgency")
+    if u:
+        db.add_message(cid, "assistant", llm.urgency_text(u, language), {"status": a["status"]})
+    else:
+        # The assistant was recalibrated since the first answer (an expert added labels) and the same photo is
+        # no longer a clear diagnosis: explain the new decision instead of failing on the missing urgency.
+        post_reply(cid, a, language=language)
     return a
 
 

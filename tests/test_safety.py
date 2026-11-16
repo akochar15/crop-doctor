@@ -245,6 +245,17 @@ def test_expert_disease_label_still_calibrates(tmp_db, monkeypatch):
     assert service.expert_answer(FakeDoctor(), cid, "tomato_septoria", "") == {"ok": "tomato_septoria"}
 
 
+def test_extent_answer_survives_a_recalibration_that_changes_the_decision(tmp_db, monkeypatch):
+    """Between the diagnosis and the farmer's "how much is affected?" answer an expert label can recalibrate the
+    assistant, so the same photo is no longer a diagnosis (no urgency). The farmer gets the new decision."""
+    cid = db.create_case("s1", "potato", "img.jpg", LATE_BLIGHT | {"crop": "potato"})
+    monkeypatch.setattr(service, "reassess", lambda doctor, cid, **kw: UNSURE)
+    a = service.answer_extent(FakeDoctor(), cid, "many")
+    assert a["status"] == "expert"
+    last = db.messages(cid)[-1]
+    assert last["role"] == "assistant" and "expert" in last["text"]
+
+
 # ---------- H8: Hindi frame sentences ----------
 
 def test_hindi_template_frames():
