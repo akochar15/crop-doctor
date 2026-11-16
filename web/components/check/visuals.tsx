@@ -4,140 +4,115 @@
 // Colour only ever means status: ok (green), soon (amber), urgent (red), ask (blue), expert (violet).
 import { useEffect, useState } from "react";
 import {
-  Ban, BadgeCheck, Bug, Camera, CircleCheck, CircleHelp, Clock, Cloud, Dna, Droplet, Droplets, Eye, Flame, Hand,
-  Leaf, Megaphone, Microscope, Puzzle, RotateCcw, ScanSearch, Scissors, Shovel, Sprout, Square, Target, TriangleAlert,
+  AlarmClock, Ban, Bug, CalendarClock, Camera, ChevronDown, CircleCheck, Clock, Cloud, Dna, Droplet, Droplets, Eye, Flame,
+  Hand, Leaf, Megaphone, Microscope, Puzzle, RotateCcw, Scissors, ShieldAlert, Shovel, Sprout, Square, Target, Trees,
   UserRound, Volume2, Wind, type LucideIcon,
 } from "lucide-react";
 import type { Disease, Urgency } from "@/lib/api";
-import { useT, type Key } from "@/lib/i18n";
+import { useT, type Key, type T } from "@/lib/i18n";
 import { REFERENCES } from "@/lib/references";
 
-/* ---------- Verdict band: one solid status colour, one icon, one line ---------- */
-export type HeroKind = "healthy" | "diagnosis" | "urgent" | "question" | "expert" | "answered" | "retake" | "unfamiliar";
+export type HeroKind = "healthy" | "diagnosis" | "question" | "expert" | "answered" | "retake" | "unfamiliar";
 
-const SOLID = {
-  ok: "bg-brand text-on-brand",
-  soon: "bg-soon-solid text-on-soon",
-  urgent: "bg-urgent-solid text-on-urgent",
-  ask: "bg-ask-solid text-on-ask",
-  expert: "bg-expert-solid text-on-expert",
-} as const;
-export type Tone = keyof typeof SOLID;
+/** "Potato late blight" on a potato check reads "Late blight": the crop is already in the line above. */
+export function shortName(name: string, crop: string, t: T): string {
+  const local = t.server(name);
+  if (t.hi && local !== name) return local.replace(/^(आलू|टमाटर)\s+((का|की|के)\s+)?/, "") || local;
+  const s = name.replace(new RegExp(`^${crop}\\s+`, "i"), "");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
-export const HERO: Record<HeroKind, { icon: LucideIcon; tone: Tone; title: Key }> = {
-  healthy: { icon: CircleCheck, tone: "ok", title: "heroHealthy" },
-  diagnosis: { icon: TriangleAlert, tone: "soon", title: "heroDisease" },
-  urgent: { icon: TriangleAlert, tone: "urgent", title: "heroDisease" },
-  question: { icon: CircleHelp, tone: "ask", title: "heroQuestion" },
-  expert: { icon: UserRound, tone: "expert", title: "heroExpert" },
-  answered: { icon: BadgeCheck, tone: "expert", title: "heroAnswered" },
-  retake: { icon: Camera, tone: "soon", title: "heroRetake" },
-  unfamiliar: { icon: ScanSearch, tone: "expert", title: "unfamiliar" },
+/** English short name, shown small under a Hindi name so a farmer can match it with what they hear elsewhere. */
+export function englishShort(name: string, crop: string): string {
+  const s = name.replace(new RegExp(`^${crop}\\s+`, "i"), "");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+export function cropName(crop: string, t: T): string {
+  return crop === "tomato" || crop === "potato" ? t(crop) : crop;
+}
+
+const likelyWord = (p: number): Key => (p >= 0.9 ? "veryLikely" : p >= 0.7 ? "likely" : p >= 0.5 ? "possible" : "lessLikely");
+
+/* ---------- Your photo, large, with a small label ---------- */
+export function PhotoHero({ src, chip, alt, height = 240, look = "plain" }: {
+  src?: string; chip?: string; alt: string; height?: number; look?: "plain" | "blur" | "dashed";
+}) {
+  if (!src) return null;
+  return (
+    <div className="relative mx-4 mt-1 overflow-hidden rounded-3xl bg-surface-2" style={{ height }}>
+      <img src={src} alt={alt}
+        className={`block h-full w-full object-cover ${look === "blur" ? "scale-[1.08] blur-[5px] brightness-[.55]" : ""}`} />
+      {look === "dashed" && <span className="absolute inset-2.5 rounded-[18px] border-2 border-dashed border-white/70" aria-hidden="true" />}
+      {chip && <span className="absolute bottom-3.5 left-3.5 rounded-full bg-surface px-3 py-1 text-sm font-semibold text-ink">{chip}</span>}
+    </div>
+  );
+}
+
+/* ---------- Status line above a heading: icon + bold coloured words ---------- */
+export function Tag({ icon: Icon, tone, children, size = 17 }: { icon: LucideIcon; tone: string; children: React.ReactNode; size?: number }) {
+  return (
+    <p className={`flex items-center gap-2 font-bold ${tone}`} style={{ fontSize: size }}>
+      <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />{children}
+    </p>
+  );
+}
+
+/* ---------- Confidence: one thin bar, the number and a word ---------- */
+export function ConfidenceBar({ p }: { p: number }) {
+  const t = useT();
+  const n = Math.round(p * 100);
+  return (
+    <div className="mt-3 flex items-center gap-3">
+      <div className="h-1.5 flex-1 rounded-full bg-surface-2" aria-hidden="true">
+        <div className="h-full rounded-full bg-ink" style={{ width: `${n}%` }} />
+      </div>
+      <span className="text-base text-ink-2"><b className="text-ink">{n}%</b> {t(likelyWord(p))}</span>
+    </div>
+  );
+}
+
+/* ---------- Urgency: the headline, three segments with the active one filled, and the reason ---------- */
+const LEVELS: { key: Urgency["level"]; word: Key }[] = [
+  { key: "routine", word: "canWait" },
+  { key: "soon", word: "thisWeek" },
+  { key: "urgent", word: "today" },
+];
+const URGENCY: Record<string, { icon: LucideIcon; title: Key; text: string; fill: string }> = {
+  urgent: { icon: AlarmClock, title: "actToday", text: "text-urgent", fill: "bg-urgent-solid" },
+  soon: { icon: CalendarClock, title: "actWeek", text: "text-soon", fill: "bg-soon-solid" },
+  routine: { icon: Clock, title: "actRoutine", text: "text-ok", fill: "bg-ok-solid" },
 };
 
-/** Status colour for a diagnosis: follows the urgency, so "act today" is always red. */
-export function urgencyTone(level?: Urgency["level"]): Tone {
-  return level === "urgent" ? "urgent" : level === "soon" ? "soon" : "ok";
-}
-
-export function VerdictBand({ kind, tone, label, main, sub, photo }: {
-  kind: HeroKind; tone?: Tone; label?: string; main: string; sub?: string; photo?: string;
-}) {
-  const h = HERO[kind];
-  const Icon = h.icon;
-  const solid = SOLID[tone ?? h.tone];
-  return (
-    <div className={`rise flex items-center gap-4 rounded-2xl p-4 shadow-card ${solid}`} role="status">
-      {photo ? (
-        <span className="relative shrink-0">
-          <img src={photo} alt="" className="h-20 w-20 rounded-xl object-cover sm:h-24 sm:w-24" />
-          <span className={`absolute -bottom-2 -right-2 flex h-9 w-9 items-center justify-center rounded-full border-[3px] border-surface ${solid}`} aria-hidden="true">
-            <Icon className="h-5 w-5" strokeWidth={2.5} />
-          </span>
-        </span>
-      ) : (
-        <Icon className="h-9 w-9 shrink-0" strokeWidth={2.25} aria-hidden="true" />
-      )}
-      <div className="min-w-0">
-        {label && <p className="text-sm font-semibold opacity-90">{label}</p>}
-        <p className="text-2xl font-bold leading-tight tracking-tight sm:text-[28px]">{main}</p>
-        {sub && <p className="mt-1 font-semibold">{sub}</p>}
-      </div>
-    </div>
-  );
-}
-
-/* ---------- Confidence: 10 neutral dots are easier to read than a percentage ---------- */
-export function ConfidenceDots({ p }: { p: number }) {
+export function UrgencyBlock({ u }: { u: Urgency }) {
   const t = useT();
-  const filled = Math.max(1, Math.round(p * 10));
-  const word = t(p >= 0.9 ? "veryLikely" : p >= 0.7 ? "likely" : p >= 0.5 ? "possible" : "lessLikely");
+  const k = URGENCY[u.level];
+  if (!k) return null;
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1" aria-label={`${word}: ${Math.round(p * 100)} out of 100`}>
-      <div className="flex gap-1" aria-hidden="true">
-        {Array.from({ length: 10 }, (_, i) => (
-          <span key={i} className={`h-3 w-3 rounded-full ${i < filled ? "bg-brand" : "bg-surface-2 ring-1 ring-border"}`} />
-        ))}
-      </div>
-      <span className="font-semibold text-ink-2"><span className="text-lg font-bold text-brand">{Math.round(p * 100)}%</span> {word}</span>
-    </div>
-  );
-}
-
-/* ---------- Urgency: three segments, the active one filled, plus the reason ---------- */
-const LEVELS: { key: Urgency["level"]; word: Key; tone: Tone }[] = [
-  { key: "routine", word: "canWait", tone: "ok" },
-  { key: "soon", word: "thisWeek", tone: "soon" },
-  { key: "urgent", word: "today", tone: "urgent" },
-];
-
-export function UrgencyLight({ u }: { u: Urgency }) {
-  const t = useT();
-  if (u.level === "none") return null;
-  return (
-    <div>
-      <div className="grid grid-cols-3 gap-1.5" role="img" aria-label={`${t("actWithin", { t: t.server(u.act_within) })}`}>
-        {LEVELS.map((l) => (
-          <div key={l.key} className={`flex min-h-11 items-center justify-center rounded-full px-1 text-center text-sm font-semibold transition ${
-            u.level === l.key ? `${SOLID[l.tone]} scale-105 shadow-card` : "bg-surface-2 text-ink-3"}`}>
-            {t(l.word)}
-          </div>
-        ))}
-      </div>
-      <p className="mt-2 flex items-start gap-2 text-ink-2">
-        <Clock className="mt-1 h-5 w-5 shrink-0" aria-hidden="true" />{t.server(u.why)}
+    <div className="mx-5 mt-5 border-y border-border py-4">
+      <p className={`flex flex-wrap items-center gap-x-2 text-[19px] font-bold ${k.text}`}>
+        <k.icon className="h-[22px] w-[22px] shrink-0" aria-hidden="true" />{t(k.title)}
+        {u.act_within && <span className="text-base font-medium text-ink-2">· {t("within", { t: t.server(u.act_within) })}</span>}
       </p>
+      <div className="mt-3 grid grid-cols-3 gap-1" aria-hidden="true">
+        {LEVELS.map((l) => {
+          const on = l.key === u.level;
+          return (
+            <div key={l.key}>
+              <div className={`h-1 rounded-full ${on ? k.fill : "bg-surface-2"}`} />
+              <p className={`mt-1.5 text-[13px] ${on ? `font-bold ${k.text}` : "text-ink-3"}`}>{t(l.word)}</p>
+            </div>
+          );
+        })}
+      </div>
+      {u.why && <p className="mt-2.5 text-[15px] leading-[1.45] text-ink-2">{t.server(u.why)}</p>}
     </div>
   );
 }
 
-/* ---------- Leaf damage: a leaf that fills up brown ---------- */
-const LEAF = "M50 6C20 26 10 58 26 86c6 10 16 14 24 14s18-4 24-14C90 58 80 26 50 6Z";
-export function LeafDamage({ fraction }: { fraction: number }) {
-  const t = useT();
-  const pct = Math.round(Math.min(Math.max(fraction, 0), 1) * 100);
-  const word = t(pct < 10 ? "dmgLittle" : pct < 30 ? "dmgSome" : pct < 60 ? "dmgLot" : "dmgBad");
-  return (
-    <div className="flex items-center gap-4 py-3">
-      <svg viewBox="0 0 100 104" className="h-16 w-16 shrink-0" role="img" aria-label={t("dmgAbout", { p: pct })}>
-        <defs>
-          <clipPath id="leaf-clip"><path d={LEAF} /></clipPath>
-        </defs>
-        <path d={LEAF} fill="#3fae5c" />
-        <g clipPath="url(#leaf-clip)">
-          <rect x="0" y={104 - (104 * pct) / 100} width="100" height="104" fill="#8b5a2b" />
-          <circle cx="40" cy={104 - (104 * pct) / 100} r="6" fill="#8b5a2b" />
-          <circle cx="64" cy={104 - (104 * pct) / 100 + 2} r="5" fill="#8b5a2b" />
-        </g>
-        <path d="M50 14v84M50 40l-14-10M50 56l16-12M50 72l-16-10" stroke="#1f6b35" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.6" />
-      </svg>
-      <div>
-        <p className="font-semibold text-ink">{word}</p>
-        <p className="text-ink-2">{t("dmgAbout", { p: pct })}</p>
-        <p className="text-sm text-ink-3">{t("dmgNote")}</p>
-      </div>
-    </div>
-  );
+/* ---------- Leaf damage: a short bar that fills ---------- */
+function damageWord(pct: number): Key {
+  return pct < 10 ? "dmgLittle" : pct < 30 ? "dmgSome" : pct < 60 ? "dmgLot" : "dmgBad";
 }
 
 /* ---------- What causes it and how fast it spreads ---------- */
@@ -150,49 +125,57 @@ function causeOf(cause?: string | null): { icon: LucideIcon; word: Key } | null 
   if (c.includes("fung")) return { icon: Sprout, word: "cFungus" };
   return null;
 }
-const SPREAD: Record<string, { icon: LucideIcon; word: Key; bars: number }> = {
-  fast: { icon: Flame, word: "spFast", bars: 3 },
-  medium: { icon: Wind, word: "spMedium", bars: 2 },
-  virus_insect: { icon: Bug, word: "spInsect", bars: 2 },
-  virus_contact: { icon: Hand, word: "spContact", bars: 2 },
+const SPREAD: Record<string, { icon: LucideIcon; word: Key }> = {
+  fast: { icon: Flame, word: "spFast" },
+  medium: { icon: Wind, word: "spMedium" },
+  virus_insect: { icon: Bug, word: "spInsect" },
+  virus_contact: { icon: Hand, word: "spContact" },
 };
 
 export function hasFacts(d: Disease) {
   return !!(causeOf(d.cause) || (d.spread && SPREAD[d.spread]) || d.signs);
 }
 
-export function DiseaseFacts({ d }: { d: Disease }) {
+function Fact({ lead, label, value }: { lead: React.ReactNode; label: string; value: string }) {
+  return (
+    <li className="flex items-center gap-3.5 py-2.5">
+      {lead}
+      <div className="min-w-0">
+        <p className="text-[13px] text-ink-3">{label}</p>
+        <p className="font-semibold leading-[1.35] text-ink">{value}</p>
+      </div>
+    </li>
+  );
+}
+const factIcon = (Icon: LucideIcon) => <Icon className="mx-[13px] h-[22px] w-[22px] shrink-0 text-ink-2" aria-hidden="true" />;
+
+/** Leaf damage, cause, spread and signs: useful, but not the first thing to read. */
+export function MoreDetails({ d, fraction }: { d: Disease; fraction?: number | null }) {
   const t = useT();
   const cause = causeOf(d.cause);
   const spread = d.spread ? SPREAD[d.spread] : undefined;
-  if (!cause && !spread && !d.signs) return null;
+  const pct = fraction != null ? Math.round(Math.min(Math.max(fraction, 0), 1) * 100) : null;
+  if (pct == null && !cause && !spread && !d.signs) return null;
   return (
-    <ul className="divide-y divide-border">
-      {cause && <Fact icon={cause.icon} label={t("causedBy")} value={t(cause.word)} />}
-      {spread && (
-        <Fact icon={spread.icon} label={t("spreads")} value={t(spread.word)}>
-          <span className="mt-1 flex gap-1" aria-hidden="true">
-            {[1, 2, 3].map((i) => <span key={i} className={`h-1.5 w-6 rounded-full ${i <= spread.bars ? "bg-ink-2" : "bg-border"}`} />)}
-          </span>
-        </Fact>
-      )}
-      {d.signs && (
-        <Fact icon={Eye} label={t("recognise")} value={t.hi ? t.server(d.signs) : d.signs.charAt(0).toUpperCase() + d.signs.slice(1)} />
-      )}
-    </ul>
-  );
-}
-
-function Fact({ icon: Icon, label, value, children }: { icon: LucideIcon; label: string; value: string; children?: React.ReactNode }) {
-  return (
-    <li className="flex items-start gap-3 py-3">
-      <Icon className="mt-0.5 h-6 w-6 shrink-0 text-ink-2" aria-hidden="true" />
-      <div className="min-w-0">
-        <p className="text-sm text-ink-3">{label}</p>
-        <p className="font-semibold leading-snug text-ink">{value}</p>
-        {children}
-      </div>
-    </li>
+    <details className="group mx-5 mt-[18px] border-y border-border">
+      <summary className="flex h-14 cursor-pointer list-none items-center justify-between text-base font-semibold text-ink">
+        {t("details")}
+        <ChevronDown className="h-5 w-5 text-ink-3 transition group-open:rotate-180" aria-hidden="true" />
+      </summary>
+      <ul className="pb-1.5">
+        {pct != null && (
+          <Fact label={t("leafDamage")} value={t("dmgShort", { p: pct, w: t(damageWord(pct)).toLowerCase() })}
+            lead={<span className="h-2.5 w-12 shrink-0 overflow-hidden rounded-full bg-surface-2" role="img" aria-label={t("dmgAbout", { p: pct })}>
+              <span className="block h-full bg-ink-2" style={{ width: `${pct}%` }} />
+            </span>} />
+        )}
+        {cause && <Fact lead={factIcon(cause.icon)} label={t("causedBy")} value={t(cause.word)} />}
+        {spread && <Fact lead={factIcon(spread.icon)} label={t("spreads")} value={t(spread.word)} />}
+        {d.signs && (
+          <Fact lead={factIcon(Eye)} label={t("recognise")} value={t.hi ? t.server(d.signs) : d.signs.charAt(0).toUpperCase() + d.signs.slice(1)} />
+        )}
+      </ul>
+    </details>
   );
 }
 
@@ -217,21 +200,72 @@ export function actionSteps(d: Disease | null, healthy: boolean, urgent: boolean
   ];
 }
 
-export function ActionList({ steps }: { steps: { icon: LucideIcon; text: Key }[] }) {
+export function ActionList({ title, steps, note }: { title: string; steps: { icon: LucideIcon; text: Key }[]; note?: string }) {
   const t = useT();
   return (
-    <section aria-labelledby="todo" className="rounded-2xl border border-border bg-surface p-4 shadow-card">
-      <h2 id="todo" className="text-lg font-semibold text-ink">{t("whatToDo")}</h2>
-      <ol className="mt-1 divide-y divide-border">
+    <section aria-labelledby="todo" className="px-5 pt-7">
+      <h2 id="todo" className="text-2xl font-semibold tracking-[-0.02em] text-ink">{title}</h2>
+      <ol className="mt-1.5">
         {steps.map((s, i) => (
-          <li key={s.text} className="flex min-h-14 items-center gap-3 py-2">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-base font-bold text-on-brand" aria-hidden="true">{i + 1}</span>
+          <li key={s.text} className={`flex min-h-[62px] items-center gap-3.5 py-1.5 ${i < steps.length - 1 ? "border-b border-border" : ""}`}>
+            <span className="serif-i w-[18px] shrink-0 text-2xl text-ink-3" aria-hidden="true">{i + 1}</span>
+            <span className="flex-1 text-lg leading-[1.3] text-ink">{t(s.text)}</span>
             <s.icon className="h-5 w-5 shrink-0 text-ink-3" aria-hidden="true" />
-            <span className="text-lg leading-snug text-ink">{t(s.text)}</span>
           </li>
         ))}
       </ol>
+      {note && (
+        <p className="mt-2.5 flex gap-2 text-[15px] leading-[1.45] text-ink-2">
+          <ShieldAlert className="mt-0.5 h-[18px] w-[18px] shrink-0" aria-hidden="true" />{note}
+        </p>
+      )}
     </section>
+  );
+}
+
+/* ---------- Your photo next to a typical photo of the disease ---------- */
+export function PhotoCompare({ photo, disease, short = false }: { photo?: string; disease: Disease | null; short?: boolean }) {
+  const t = useT();
+  const ref = disease ? REFERENCES[disease.label] : undefined;
+  if (!photo || !ref || !disease) return null;
+  return (
+    <div className="grid grid-cols-2 gap-2.5 px-4 pt-6">
+      <figure>
+        <img src={photo} alt={t("yourPhoto")} className="block aspect-square w-full rounded-2xl object-cover" />
+        <figcaption className="mt-1.5 text-sm font-semibold text-ink">{t("yourLeaf")}</figcaption>
+      </figure>
+      <figure>
+        <img src={ref.src} alt={t.server(disease.name)} loading="lazy" className="block aspect-square w-full rounded-2xl object-cover" />
+        <figcaption className="mt-1.5 text-sm leading-[1.3] text-ink">
+          <b>{t(short ? "usuallyLooks" : "typicalLook")}</b>
+          {!short && <span className="mt-0.5 block text-[13px] text-ink-3">{t("photoFrom", { s: ref.credit })}</span>}
+        </figcaption>
+      </figure>
+    </div>
+  );
+}
+
+/* ---------- The shortlist when it isn't sure: reference thumb, a bar and a word ---------- */
+export function Shortlist({ items }: { items: { label: string; name: string; probability: number }[] }) {
+  const t = useT();
+  return (
+    <ul className="mt-2">
+      {items.map((o, i) => {
+        const ref = REFERENCES[o.label];
+        return (
+          <li key={o.label} className={`flex min-h-16 items-center gap-3 py-2 ${i < items.length - 1 ? "border-b border-border" : ""}`}>
+            {ref ? <img src={ref.src} alt="" className="h-11 w-11 shrink-0 rounded-[10px] object-cover" /> : <span className="h-11 w-11 shrink-0 rounded-[10px] bg-surface-2" />}
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-ink">{t.server(o.name)}</p>
+              <div className="mt-1 h-1 rounded-full bg-surface-2" aria-hidden="true">
+                <div className="h-full rounded-full bg-ink-2" style={{ width: `${Math.round(o.probability * 100)}%` }} />
+              </div>
+            </div>
+            <span className="text-sm text-ink-2">{t(likelyWord(o.probability))}</span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -274,13 +308,19 @@ export function ListenButton({ text, language, big = false }: { text: string; la
     setSpeaking(true);
   };
   const Icon = speaking ? Square : Volume2;
+  if (big)
+    return (
+      <div className="px-4 pt-4">
+        <button type="button" onClick={toggle} aria-pressed={speaking}
+          className="flex h-14 w-full items-center justify-center gap-2.5 rounded-full border-[1.5px] border-ink text-lg font-semibold text-ink transition hover:bg-surface-2">
+          <Icon className="h-[22px] w-[22px]" aria-hidden="true" />{t(speaking ? "stop" : "listenAnswer")}
+        </button>
+      </div>
+    );
   return (
     <button type="button" onClick={toggle} aria-pressed={speaking}
-      className={big
-        ? "flex min-h-14 w-full items-center justify-center gap-2 rounded-full border-2 border-brand bg-surface px-4 text-lg font-semibold text-brand transition hover:bg-ok-soft"
-        : "mt-2 inline-flex min-h-12 items-center gap-2 rounded-xl border border-border bg-surface px-4 font-semibold text-ink hover:bg-surface-2"}>
-      <Icon className={big ? "h-6 w-6" : "h-5 w-5"} aria-hidden="true" />
-      {t(speaking ? "stop" : big ? "listenAnswer" : "listen")}
+      className="mt-1 inline-flex min-h-10 items-center gap-1.5 text-[13px] font-semibold text-ink-2 hover:text-ink">
+      <Icon className="h-4 w-4" aria-hidden="true" />{t(speaking ? "stop" : "listen")}
     </button>
   );
 }
@@ -298,61 +338,19 @@ export function optionIcon(text: string): LucideIcon {
   return Leaf;
 }
 
-/** Few / some / many: 1, 3 or 6 leaves. */
-export function ExtentIcon({ value }: { value: string }) {
-  const n = value === "many" ? 6 : value === "some" ? 3 : 1;
-  return (
-    <span className="grid h-12 grid-cols-3 place-content-center gap-0.5 text-ok" aria-hidden="true">
-      {Array.from({ length: n }, (_, i) => <Leaf key={i} className="h-5 w-5" />)}
-    </span>
-  );
+/** Few / some / many plants. */
+export function extentIcon(value: string): LucideIcon {
+  return value === "many" ? Trees : value === "some" ? Sprout : Leaf;
 }
 
-/* ---------- Your photo next to a typical photo of the disease ---------- */
-export function PhotoCompare({ photo, disease }: { photo?: string; disease: Disease | null }) {
-  const t = useT();
-  const ref = disease ? REFERENCES[disease.label] : undefined;
-  if (!photo && !ref) return null;
+/** Grey shapes where the result will be, gently pulsing. */
+export function ResultSkeleton({ label }: { label: string }) {
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {photo && (
-        <figure>
-          <img src={photo} alt={t("yourPhoto")} className="aspect-[4/3] w-full rounded-2xl object-cover shadow-card" />
-          <figcaption className="mt-1 text-sm font-semibold text-ink">{t("yourLeaf")}</figcaption>
-        </figure>
-      )}
-      {ref && disease && (
-        <figure>
-          <img src={ref.src} alt={t.server(disease.name)} loading="lazy" className="aspect-[4/3] w-full rounded-2xl object-cover shadow-card" />
-          <figcaption className="mt-1 text-sm leading-snug">
-            <span className="block font-semibold text-ink">{t("typicalLook")}</span>
-            <span className="block text-ink-3">{t("photoCredit")} {ref.credit}</span>
-          </figcaption>
-        </figure>
-      )}
-    </div>
-  );
-}
-
-/* ---------- Reference photos: "Does your leaf look like this?" ---------- */
-export function ReferencePhotos({ diseases }: { diseases: Disease[] }) {
-  const t = useT();
-  const items = diseases.filter((d) => REFERENCES[d.label]);
-  if (!items.length) return null;
-  return (
-    <div>
-      <p className="mb-2 font-semibold text-ink">{t("compareTitle")}</p>
-      <div className={`grid gap-3 ${items.length > 2 ? "grid-cols-3" : "grid-cols-2"}`}>
-        {items.map((d) => (
-          <figure key={d.label}>
-            <img src={REFERENCES[d.label].src} alt={t.server(d.name)} loading="lazy" className="aspect-square w-full rounded-2xl object-cover shadow-card" />
-            <figcaption className="mt-1 text-sm leading-snug">
-              <span className="block font-semibold text-ink">{t.server(d.name)}</span>
-              <span className="block text-ink-3">{t("photoCredit")} {REFERENCES[d.label].credit}</span>
-            </figcaption>
-          </figure>
-        ))}
-      </div>
+    <div className="cd-shimmer mx-4 mt-1 flex flex-col gap-2.5" role="status" aria-label={label}>
+      <div className="h-40 rounded-[22px] bg-surface-2" />
+      <div className="h-3.5 w-2/5 rounded-full bg-surface-2" />
+      <div className="h-[34px] w-3/4 rounded-xl bg-surface-2" />
+      <div className="h-14 rounded-full bg-surface-2" />
     </div>
   );
 }

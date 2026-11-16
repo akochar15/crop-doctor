@@ -2,18 +2,18 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LoaderCircle } from "lucide-react";
+import { CloudAlert, RotateCcw } from "lucide-react";
 import { api, errorKey, type CaseView, type Meta } from "@/lib/api";
 import { setLanguage, useLanguage, useT, type Key } from "@/lib/i18n";
 import { rememberCase } from "@/lib/recent";
 import CaseScreen from "./CaseScreen";
+import { ResultSkeleton } from "./visuals";
 import NewPhoto from "./NewPhoto";
-import RecentChecks from "./RecentChecks";
 
 /** Suspense fallback for the check page (translated once the browser has the saved language). */
 export function CheckLoading() {
   const t = useT();
-  return <p className="py-10 text-center text-ink-3">{t("loadingCase")}</p>;
+  return <ResultSkeleton label={t("loadingCase")} />;
 }
 
 export default function CheckFlow() {
@@ -69,33 +69,29 @@ export default function CheckFlow() {
     );
 
   return (
-    <div className="space-y-5">
+    <div>
       {meta ? (
         <NewPhoto meta={meta} language={language} onLanguage={setLanguage} onOpened={opened}
           showSamples={params.get("sample") === "1"} />
       ) : (
         <Waiting error={error} onRetry={() => { setError(null); setAttempt((a) => a + 1); }} />
       )}
-      <RecentChecks />
     </div>
   );
 }
 
 /** While the app data loads (the server may be starting), or a translated error with Try again. */
-function Waiting({ error, onRetry }: { error: Key | null; onRetry: () => void }) {
+export function Waiting({ error, onRetry }: { error: Key | null; onRetry: () => void }) {
   const t = useT();
   if (error)
     return (
-      <div role="alert" className="rounded-xl bg-urgent-soft p-4 text-urgent">
-        <p>{t(error)}</p>
+      <div role="alert" className="mx-3 mt-2 rounded-[18px] border border-border bg-surface p-4">
+        <p className="flex items-center gap-2 text-[17px] font-semibold text-ink"><CloudAlert className="h-[22px] w-[22px] shrink-0" aria-hidden="true" />{t(error)}</p>
         <button type="button" onClick={onRetry}
-          className="mt-3 min-h-12 rounded-xl bg-brand px-5 font-semibold text-on-brand">{t("retry")}</button>
+          className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand font-semibold text-on-brand hover:opacity-90">
+          <RotateCcw className="h-[18px] w-[18px]" aria-hidden="true" />{t("retry")}
+        </button>
       </div>
     );
-  return (
-    <div className="py-16 text-center text-ink-3" role="status">
-      <LoaderCircle className="spin mx-auto h-8 w-8 text-brand" aria-hidden="true" />
-      <p className="mt-3">{t("loading")}</p>
-    </div>
-  );
+  return <ResultSkeleton label={t("loading")} />;
 }

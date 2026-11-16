@@ -15,7 +15,7 @@ const subscribe = (fn: () => void) => {
 
 function setTheme(t: Theme) {
   document.documentElement.dataset.theme = t;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", t === "dark" ? "#070d0a" : "#f3f6f3");
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", t === "dark" ? "#0b120e" : "#f5f1e8");
   try {
     localStorage.setItem("cd_theme", t);
   } catch {}
@@ -32,9 +32,9 @@ export default function ThemeToggle() {
       onClick={() => setTheme(dark ? "light" : "dark")}
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
       title={dark ? "Light mode" : "Dark mode"}
-      className="flex h-12 w-12 items-center justify-center rounded-xl text-ink-2 hover:bg-surface-2 hover:text-ink"
+      className="flex h-12 w-12 items-center justify-center rounded-full text-ink hover:bg-surface-2"
     >
-      <Icon className="h-6 w-6" aria-hidden="true" />
+      <Icon className="h-5 w-5" aria-hidden="true" />
     </button>
   );
 }
