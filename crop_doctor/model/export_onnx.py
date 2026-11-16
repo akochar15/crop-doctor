@@ -18,7 +18,6 @@ any CPU; the weights are only STORED as 16-bit floats (56 MB, under GitHub's 100
 from __future__ import annotations
 
 import json
-import shutil
 
 import numpy as np
 import pandas as pd
