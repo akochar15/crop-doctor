@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Expert dashboard" };
 
 export default function ExpertPage() {
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-20 pt-6">
+    <div className="pb-16">
       <ExpertDashboard />
     </div>
   );

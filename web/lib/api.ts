@@ -79,7 +79,10 @@ export type CalibrationRun = {
 };
 export type Trust = { current: CalibrationRun | null; since_reset: CalibrationRun[]; all: CalibrationRun[] };
 export type Answered = {
-  cases: { id: number; crop: string; audit: boolean; assistant: Disease | null; expert: Disease | null; agree: boolean; answered_at: string }[];
+  cases: {
+    id: number; crop: string; audit: boolean; assistant: Disease | null; expert: Disease | null; agree: boolean; answered_at: string;
+    image?: string; note?: string;   // added with the redesign; an older server leaves them out
+  }[];
   retraining_pool: number;
   audits: number;
   audit_accuracy: number | null;

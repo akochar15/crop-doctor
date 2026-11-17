@@ -273,6 +273,22 @@ const EN = {
   oneQuestionTag: "One question",
   askAbout: "Ask about this leaf",
   photoFrom: "Photo: {s}",
+  // desktop home
+  heroEyebrow: "For tomato and potato farmers",
+  heroTextLong: "It names the disease when it's sure, asks you one question when it's almost sure, and sends your photo to an expert when it isn't.",
+  statAccuracyLong: "right on real field photos",
+  flow1L: "One sick leaf, in daylight. Blurry or dark photos are caught and you're asked to retake.",
+  flow2L: "It compares the leaf with thousands of real field photos of tomato and potato diseases.",
+  flow3L: "What it is, how urgent, and what to do, in your language, with a Listen button.",
+  sureL: "Names the disease, shows how urgent it is and what to do.",
+  almostL: "Asks you one simple question about the leaf, then answers.",
+  notSureL: "Sends your photo to an agriculture expert instead of guessing.",
+  whyLabSays: "says it's {conf} sure",
+  whyCoverDesk: "the shortlist holds the right disease. Usually 1 or 2 diseases.",
+  whyAloneDesk: "right when it answers alone. It answers {answered} of photos itself.",
+  navWhy: "Why honesty",
+  navExperts: "For experts",
+  footerPhotos: "Photos: Tanzania potato dataset, CC BY 4.0.",
 };
 export type Key = keyof typeof EN;
 
@@ -500,6 +516,21 @@ const HI: Partial<Record<Key, string>> = {
   oneQuestionTag: "एक सवाल",
   askAbout: "इस पत्ते के बारे में पूछें",
   photoFrom: "फोटो: {s}",
+  heroEyebrow: "टमाटर और आलू किसानों के लिए",
+  heroTextLong: "पक्का हो तो यह रोग का नाम बताता है, लगभग पक्का हो तो आपसे एक सवाल पूछता है, और पक्का न हो तो आपकी फोटो विशेषज्ञ को भेजता है।",
+  statAccuracyLong: "खेत की असली फोटो पर सही",
+  flow1L: "दिन की रोशनी में एक बीमार पत्ता। धुंधली या अँधेरी फोटो पकड़ी जाती है और आपसे दोबारा लेने को कहा जाता है।",
+  flow2L: "यह पत्ते की तुलना टमाटर और आलू के रोगों की हज़ारों असली खेत की फोटो से करता है।",
+  flow3L: "क्या है, कितना ज़रूरी है और क्या करें, आपकी भाषा में, सुनने के बटन के साथ।",
+  sureL: "रोग का नाम, वह कितना ज़रूरी है और क्या करना है, बताता है।",
+  almostL: "पत्ते के बारे में आपसे एक आसान सवाल पूछता है, फिर जवाब देता है।",
+  notSureL: "अंदाज़ा लगाने के बजाय आपकी फोटो कृषि विशेषज्ञ को भेजता है।",
+  whyLabSays: "कहता है {conf} पक्का",
+  whyCoverDesk: "छोटी सूची में सही रोग होता है। आम तौर पर 1 या 2 रोग।",
+  whyAloneDesk: "खुद जवाब देने पर सही। यह {answered} फोटो का जवाब खुद देता है।",
+  navWhy: "ईमानदारी क्यों",
+  navExperts: "विशेषज्ञों के लिए",
+  footerPhotos: "फोटो: तंज़ानिया आलू डेटासेट, CC BY 4.0।",
 };
 
 /* Fixed sentences that come from the server (diseases.json, decision.py, quality_gate.py). */

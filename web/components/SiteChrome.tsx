@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Camera, Check, Languages } from "lucide-react";
+import { ArrowLeft, Camera, Check, ChevronDown, Languages } from "lucide-react";
 import { NATIVE, setLanguage, useLanguage, useT } from "@/lib/i18n";
 import ThemeToggle from "./ThemeToggle";
 
@@ -27,7 +27,7 @@ export function Mark({ size = 34, corners = true }: { size?: number; corners?: b
 const SHORT = (l: string) => (l === "English" ? "EN" : NATIVE[l] ?? l);
 
 /** One setting drives the screen text and the AI reply language, so the header offers all eight. */
-function LanguageMenu() {
+function LanguageMenu({ wide = false }: { wide?: boolean }) {
   const language = useLanguage();
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -46,9 +46,13 @@ function LanguageMenu() {
   return (
     <div ref={box} className="relative">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="listbox"
-        className="flex h-12 items-center gap-1.5 rounded-full px-2.5 text-base font-semibold text-ink hover:bg-surface-2">
+        className={`flex h-12 items-center gap-1.5 rounded-full px-2.5 text-base font-semibold text-ink hover:bg-surface-2 ${
+          wide ? "lg:h-11 lg:border lg:border-border lg:px-3.5" : ""}`}>
         <Languages className="h-[18px] w-[18px]" aria-hidden="true" />
-        <span className="sr-only">Language / भाषा: </span>{SHORT(language)}
+        <span className="sr-only">Language / भाषा: </span>
+        <span className={wide ? "lg:hidden" : ""}>{SHORT(language)}</span>
+        {wide && <span className="hidden lg:inline">{NATIVE[language] ?? language}</span>}
+        {wide && <ChevronDown className="hidden h-4 w-4 lg:block" aria-hidden="true" />}
       </button>
       {open && (
         <ul role="listbox" aria-label="Language / भाषा"
@@ -106,15 +110,24 @@ export function SiteHeader() {
       </header>
     );
 
+  // The expert dashboard draws its own top bar (tabs, sign out).
+  if (wide) return null;
+
+  // Home: phone width; on a laptop the full 1280 px with section links.
   return (
-    <header className={`mx-auto flex w-full items-center justify-between gap-3 py-3 pl-5 pr-3 ${wide ? "max-w-5xl" : "max-w-xl"}`}>
-      <Link href="/" className="flex min-h-12 items-center gap-2.5 text-xl font-bold tracking-[-0.02em] text-ink hover:text-ink">
+    <header className="mx-auto flex w-full max-w-xl items-center justify-between gap-3 py-3 pl-5 pr-3 lg:max-w-[1280px] lg:px-14 lg:py-5">
+      <Link href="/" className="flex min-h-12 items-center gap-2.5 text-xl font-bold tracking-[-0.02em] text-ink hover:text-ink lg:text-[21px]">
         <Mark />
         <span>Crop Doctor</span>
       </Link>
-      <nav className="flex items-center" aria-label="Settings">
-        <LanguageMenu />
-        <ThemeToggle />
+      <nav className="flex items-center lg:gap-6" aria-label="Main">
+        <a href="#how" className="hidden text-base font-medium text-ink-2 hover:text-ink lg:block">{t("howItWorks")}</a>
+        <a href="#why" className="hidden text-base font-medium text-ink-2 hover:text-ink lg:block">{t("navWhy")}</a>
+        <Link href="/expert" className="hidden text-base font-medium text-ink-2 hover:text-ink lg:block">{t("navExperts")}</Link>
+        <div className="flex items-center">
+          <LanguageMenu wide />
+          <ThemeToggle />
+        </div>
       </nav>
     </header>
   );
@@ -124,12 +137,14 @@ export function SiteHeader() {
 export function SiteFooter() {
   const t = useT();
   const path = usePathname();
-  if (path === "/check") return null;
+  if (path === "/check" || path.startsWith("/expert")) return null;
   return (
-    <footer className={`mx-auto w-full px-5 ${path.startsWith("/expert") ? "max-w-5xl" : "max-w-xl"}`}>
-      <div className="mt-11 flex flex-col gap-2.5 border-t border-border pb-7 pt-5">
-        <p className="text-sm leading-normal text-ink-3">{t("footerNote")}</p>
-        <Link href="/expert" className="flex min-h-12 items-center self-start text-[15px] font-semibold text-ink-2 underline underline-offset-4 hover:text-ink">
+    <footer className="mx-auto w-full max-w-xl px-5 lg:max-w-[1280px] lg:px-0">
+      <div className="mt-11 flex flex-col gap-2.5 border-t border-border pb-7 pt-5 lg:mt-0 lg:flex-row lg:items-start lg:justify-between lg:gap-6 lg:px-14 lg:py-7">
+        <p className="text-sm leading-normal text-ink-3 lg:max-w-[640px]">
+          {t("footerNote")} <span className="hidden lg:inline">{t("footerPhotos")}</span>
+        </p>
+        <Link href="/expert" className="flex min-h-12 items-center self-start text-[15px] font-semibold text-ink-2 underline underline-offset-4 hover:text-ink lg:min-h-0 lg:text-sm">
           {t("expertLink")}
         </Link>
       </div>

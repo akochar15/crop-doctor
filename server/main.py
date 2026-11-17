@@ -472,7 +472,8 @@ def answered():
     done = [c for c in db.list_cases() if c["expert_label"]]
     rows = [{"id": c["id"], "crop": c["crop"], "audit": bool(c["audit"]), "assistant": disease_view(c["model_label"]),
              "expert": disease_view(c["expert_label"]), "agree": c["model_label"] == c["expert_label"],
-             "answered_at": c["answered_at"]} for c in done]
+             "answered_at": c["answered_at"], "image": f"/api/images/{c['image_path']}",
+             "note": c["expert_note"] or ""} for c in done]
     audits = [r for r in rows if r["audit"]]
     return {"cases": rows[::-1], "retraining_pool": len(rows), "audits": len(audits),
             "audit_accuracy": (sum(r["agree"] for r in audits) / len(audits)) if audits else None}

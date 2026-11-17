@@ -524,6 +524,14 @@ html:lang(hi) .leading-relaxed { line-height: 1.8; }
 .vf-tr { right: 18px; top: 18px; border-top-width: 2.5px; border-right-width: 2.5px; border-top-right-radius: 11px; }
 .vf-bl { left: 18px; bottom: 18px; border-bottom-width: 2.5px; border-left-width: 2.5px; border-bottom-left-radius: 11px; }
 .vf-br { right: 18px; bottom: 18px; border-bottom-width: 2.5px; border-right-width: 2.5px; border-bottom-right-radius: 11px; }
+/* Desktop hero: bigger viewfinder corners further in. */
+@media (min-width: 1024px) {
+  .vf-lg { width: 44px; height: 44px; }
+  .vf-lg.vf-tl { left: 28px; top: 28px; border-top-left-radius: 16px; }
+  .vf-lg.vf-tr { right: 28px; top: 28px; border-top-right-radius: 16px; }
+  .vf-lg.vf-bl { left: 28px; bottom: 28px; border-bottom-left-radius: 16px; }
+  .vf-lg.vf-br { right: 28px; bottom: 28px; border-bottom-right-radius: 16px; }
+}
 details > summary::-webkit-details-marker { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .cd-spin, .cd-shimmer, .cd-ring { animation: none; }
