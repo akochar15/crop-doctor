@@ -16,3 +16,6 @@ app_data/
 
 # built on the server at deploy time
 server/assets/*_fp32.onnx
+
+# quick-test output of experiments run with --smoke
+crop_doctor/outputs/metrics/*_smoke.csv
