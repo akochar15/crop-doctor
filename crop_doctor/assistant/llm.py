@@ -15,7 +15,8 @@ Guardrails:
   4. Any API problem (no key, network, refusal, empty answer) -> template reply. The app always works.
 
 Two interchangeable providers (same prompt, same guardrails), picked by which key is set:
-- Gemini: GEMINI_API_KEY (or GOOGLE_API_KEY). Model GEMINI_MODEL, default gemini-3.6-flash (stable, fast).
+- Gemini: GEMINI_API_KEY (or GOOGLE_API_KEY). Model GEMINI_MODEL, default gemini-3.8-flash. When it is busy (503)
+  or fails, the next model in GEMINI_FALLBACK_MODELS is tried, within the same LLM_DEADLINE.
 - Claude: ANTHROPIC_API_KEY. Model CROP_DOCTOR_MODEL, default Claude Opus 5.5 at low effort.
 If both keys are set, Gemini is used unless CROP_DOCTOR_LLM=claude. No key -> template replies.
 """
@@ -34,7 +35,11 @@ from crop_doctor.assistant.decision import disease_name, is_healthy, is_somethin
 from crop_doctor.knowledge.rag import GENERAL, Chunk, default_retriever
 
 MODEL = os.environ.get("CROP_DOCTOR_MODEL", "claude-opus-5-5")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+# Tried in order when the main model is overloaded or fails (Render logs, 17 Nov: 3.6 Flash answered 503 "high
+# demand" for hours, so every farmer got the template reply).
+GEMINI_FALLBACK_MODELS = [m.strip() for m in os.environ.get(
+    "GEMINI_FALLBACK_MODELS", "gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash-lite").split(",") if m.strip()]
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 # Hard wall-clock limit for one AI reply. Each Gemini attempt also times out at this limit (one retry at most);
 # Claude's SDK has its own timeout and one retry. After this many seconds the
@@ -502,8 +507,32 @@ def _ask_claude(system: str, history: list[dict], user_text: str) -> str:
     return "".join(b.text for b in resp.content if b.type == "text")
 
 
+def gemini_models() -> list[str]:
+    """The main model first, then the fallbacks, each once."""
+    return list(dict.fromkeys([GEMINI_MODEL, *GEMINI_FALLBACK_MODELS]))
+
+
 def _ask_gemini(system: str, history: list[dict], user_text: str) -> str:
-    """Gemini Interactions API, stateless (store=False): earlier chat turns are included as text."""
+    """Ask each Gemini model in turn until one answers, all within LLM_DEADLINE. A busy model (503) fails in a
+    second or two, which leaves time for the next one. A refusal (Declined) is final: another model is not asked."""
+    start, last = time.monotonic(), None
+    for model in gemini_models():
+        left = LLM_DEADLINE - (time.monotonic() - start)
+        if left < 2:
+            break
+        try:
+            return _ask_gemini_model(model, system, history, user_text, timeout=left)
+        except Declined:
+            raise
+        except Exception as e:  # noqa: BLE001 - busy, timed out, unknown model...: try the next one
+            log.warning("Gemini model %s failed after %.1f s: %s: %s", model, time.monotonic() - start,
+                        type(e).__name__, str(e)[:200])
+            last = e
+    raise last or TimeoutError("no Gemini model answered in time")
+
+
+def _ask_gemini_model(model: str, system: str, history: list[dict], user_text: str, timeout: float) -> str:
+    """One Gemini Interactions API call, stateless (store=False): earlier chat turns are included as text."""
     from google import genai
     from google.genai import types
     # Fewest retries the SDK allows (it turns attempts=0 into 1 retry). By default it retries a 503 several times
@@ -514,13 +543,13 @@ def _ask_gemini(system: str, history: list[dict], user_text: str) -> str:
     earlier = "\n".join(f"{'Farmer' if m['role'] == 'user' else 'Crop Doctor'}: {m['content']}" for m in history)
     prompt = (f"<earlier_conversation>\n{earlier}\n</earlier_conversation>\n\n{user_text}" if earlier else user_text)
     it = client.interactions.create(
-        model=GEMINI_MODEL,
+        model=model,
         system_instruction=system,
         input=prompt,
         # Low thinking: it only explains facts it's given, and farmers shouldn't wait a minute for a reply.
         generation_config={"max_output_tokens": 1500, "thinking_level": "low"},
         store=False,                       # don't keep farmers' conversations on Google's servers
-        timeout=LLM_DEADLINE,              # stop waiting when the farmer gets the template reply anyway
+        timeout=timeout,                   # what is left of LLM_DEADLINE: stop when the farmer gets the template
     )
     if it.status != "completed":
         raise Declined(f"status {it.status}")

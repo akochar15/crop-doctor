@@ -118,3 +118,35 @@ def test_gemini_with_bad_key_still_answers(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "not-a-real-key")
     r = llm.reply(SEPTORIA)
     assert not r.used_llm and r.fallback_reason.startswith("gemini") and "Septoria" in r.text
+
+
+def test_busy_gemini_model_falls_back_to_the_next(monkeypatch):
+    """17 Nov: the main model answered 503 "high demand" for hours. The next model must be tried, not the template."""
+    from crop_doctor.assistant import llm
+    asked = []
+
+    def fake(model, system, history, user_text, timeout):
+        asked.append(model)
+        if len(asked) == 1:
+            raise RuntimeError("503 service_unavailable: high demand")
+        return f"reply from {model}"
+    monkeypatch.setattr(llm, "_ask_gemini_model", fake)
+    monkeypatch.setattr(llm, "GEMINI_MODEL", "main-model")
+    monkeypatch.setattr(llm, "GEMINI_FALLBACK_MODELS", ["main-model", "backup-model"])
+    assert llm._ask_gemini("sys", [], "hi") == "reply from backup-model"
+    assert asked == ["main-model", "backup-model"]          # the main model is not asked twice
+
+
+def test_gemini_refusal_is_not_retried_on_another_model(monkeypatch):
+    from crop_doctor.assistant import llm
+    asked = []
+
+    def fake(model, *a, **k):
+        asked.append(model)
+        raise llm.Declined("status failed")
+    monkeypatch.setattr(llm, "_ask_gemini_model", fake)
+    monkeypatch.setattr(llm, "GEMINI_FALLBACK_MODELS", ["backup-model"])
+    import pytest
+    with pytest.raises(llm.Declined):
+        llm._ask_gemini("sys", [], "hi")
+    assert len(asked) == 1

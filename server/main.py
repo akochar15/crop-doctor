@@ -9,7 +9,7 @@ Environment variables:
   DATABASE_URL              Postgres connection string (Supabase). Unset = local SQLite file.
   EXPERT_KEY                password for the expert dashboard endpoints. Unset = open (local dev only).
   ALLOWED_ORIGINS           comma-separated website origins allowed to call the API (CORS), e.g. the Vercel URL.
-  GEMINI_API_KEY            optional: AI replies with Gemini (GEMINI_MODEL, default gemini-3.6-flash).
+  GEMINI_API_KEY            optional: AI replies with Gemini (GEMINI_MODEL, default gemini-3.8-flash; fallbacks GEMINI_FALLBACK_MODELS).
   ANTHROPIC_API_KEY         optional: AI replies with Claude. Neither key = sourced template replies.
   CROP_DOCTOR_APP_CONFIG    model/calibration config (server/assets/app_model.json on Render).
   CROP_DOCTOR_LOGITS_DIR    cached model outputs for live calibration (server/assets/logits on Render).
