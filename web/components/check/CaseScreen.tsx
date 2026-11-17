@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorKey, imageUrl, type CaseView, type Meta, type Message } from "@/lib/api";
-import { BookOpen, Camera, ChevronDown, CircleHelp, Focus, Hand, Hourglass, Leaf, LoaderCircle, Send, Sprout, Sun, UserRound } from "lucide-react";
 import {
-  ActionList, actionSteps, ConfidenceDots, DiseaseFacts, ExtentIcon, hasFacts, LeafDamage, ListenButton, optionIcon, PhotoCompare,
-  ReferencePhotos, UrgencyLight, urgencyTone, VerdictBand, type HeroKind, type Tone,
+  ArrowUp, BadgeCheck, BookOpen, Camera, CircleCheck, CircleHelp, Focus, Hand, Hourglass, Leaf, ScanSearch, Sun, UserRound,
+} from "lucide-react";
+import {
+  ActionList, actionSteps, ConfidenceBar, cropName, englishShort, extentIcon, ListenButton, MoreDetails, optionIcon, PhotoCompare,
+  PhotoHero, ResultSkeleton, shortName, Shortlist, Tag, UrgencyBlock, type HeroKind,
 } from "./visuals";
+import { Mark } from "@/components/SiteChrome";
 import { useT, type Key, type T } from "@/lib/i18n";
 import { useVisiblePoll } from "@/lib/poll";
 
@@ -35,37 +38,36 @@ function Bubble({ m, language }: { m: Message; language: string }) {
   const mine = m.role === "farmer";
   const expert = m.role === "expert";
   const text = t.server(m.text);     // fixed server sentences (template replies, options) in the farmer's language
+  if (mine)
+    return (
+      <div className="flex justify-end">
+        <div className={`max-w-[80%] rounded-[18px_18px_4px_18px] bg-brand text-base leading-[1.55] text-on-brand ${m.image ? "p-1" : "px-3.5 py-2.5"}`}>
+          {m.image ? <img src={imageUrl(m.image)} alt={t("yourPhoto")} className="h-40 w-40 rounded-[15px_15px_3px_15px] object-cover" /> : <Rich text={text} />}
+        </div>
+      </div>
+    );
   return (
-    <div className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
-      {!mine && (
-        <span className={`mb-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${expert ? "bg-expert-soft text-expert" : "bg-ok-soft text-ok"}`} aria-hidden="true">
-          {expert ? <UserRound className="h-5 w-5" /> : <Sprout className="h-5 w-5" />}
-        </span>
+    <div className="flex items-end gap-2">
+      {expert ? (
+        <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] bg-expert-soft text-expert" aria-hidden="true"><UserRound className="h-4 w-4" /></span>
+      ) : (
+        <Mark size={30} corners={false} />
       )}
-      <div className={`max-w-[85%] rounded-xl px-4 py-3 leading-relaxed ${
-        mine ? "rounded-br-sm bg-brand text-on-brand"
-          : expert ? "rounded-bl-sm border-2 border-expert bg-expert-soft text-ink"
-          : "rounded-bl-sm border border-border bg-surface text-ink"}`}>
+      <div className={`max-w-[85%] rounded-[18px_18px_18px_4px] border px-3.5 py-3 text-base leading-[1.6] text-ink ${expert ? "border-expert-solid bg-expert-soft" : "border-border bg-surface"}`}>
         {expert && <p className="mb-1 text-sm font-semibold text-expert">{t("expertAnswer")}</p>}
-        {m.image ? (
-          <img src={imageUrl(m.image)} alt={t("yourPhoto")} className="h-40 w-40 rounded-lg object-cover" />
-        ) : (
-          <Rich text={text} />
-        )}
-        {!mine && !m.image && <ListenButton text={text} language={language} />}
+        {m.image ? <img src={imageUrl(m.image)} alt={t("yourPhoto")} className="h-40 w-40 rounded-xl object-cover" /> : <Rich text={text} />}
+        {!m.image && <ListenButton text={text} language={language} />}
         {m.sources.length > 0 && (
-          <details className="mt-2 text-sm">
-            <summary className="flex min-h-12 cursor-pointer items-center gap-2 font-semibold text-ok">
-              <BookOpen className="h-5 w-5" aria-hidden="true" /> {t("sources")} ({m.sources.length})
-            </summary>
-            <ul className="mt-1 space-y-1 text-ink-2">
-              {m.sources.map((s) => {
-                const url = s.match(/https?:\/\/\S+/)?.[0];
-                const label = url ? s.replace(url, "").replace(/:\s*$/, "") : s;
-                return <li key={s}>{url ? <a className="underline" href={url} target="_blank" rel="noreferrer">{label}</a> : label}</li>;
-              })}
-            </ul>
-          </details>
+          <div className="mt-2 flex flex-col gap-0.5 border-t border-border pt-2 text-[13px] text-ink-3">
+            <span className="flex items-center gap-1.5 font-semibold text-ink-2"><BookOpen className="h-3.5 w-3.5" aria-hidden="true" />{t("sources")}</span>
+            {m.sources.map((s) => {
+              const url = s.match(/https?:\/\/\S+/)?.[0];
+              const label = url ? s.replace(url, "").replace(/:\s*$/, "") : s;
+              return url ? (
+                <a key={s} className="text-ink-3 underline underline-offset-[3px] hover:text-ink" href={url} target="_blank" rel="noreferrer">{label}</a>
+              ) : <span key={s}>{label}</span>;
+            })}
+          </div>
         )}
       </div>
     </div>
@@ -77,163 +79,272 @@ function heroKind(c: CaseView): HeroKind {
   if (c.status === "expert_answered") return "answered";
   if (a.status === "retake") return "retake";
   if (a.status === "healthy") return "healthy";
-  if (a.status === "diagnosis") return a.urgency?.level === "urgent" ? "urgent" : "diagnosis";
+  if (a.status === "diagnosis") return "diagnosis";
   if (a.status === "question") return "question";
   if (a.unfamiliar) return "unfamiliar";
   return "expert";
 }
 
-type Verdict = { kind: HeroKind; tone?: Tone; label?: string; main: string; sub?: string };
+const TIPS: { icon: typeof Sun; text: Key }[] = [
+  { icon: Sun, text: "tipLight" },
+  { icon: Leaf, text: "tipFill" },
+  { icon: Focus, text: "tipFocus" },
+];
 
-/** The one thing the farmer must see first, as words (used by the band and by the Listen button). */
-function verdictOf(c: CaseView, t: T): Verdict {
-  const a = c.assessment;
-  const kind = heroKind(c);
-  if (kind === "answered" && c.expert) return { kind, label: t("expertSays"), main: t.server(c.expert.name) };
-  if ((kind === "diagnosis" || kind === "urgent") && a.disease) {
-    const u = a.urgency;
-    return {
-      kind, tone: urgencyTone(u?.level), label: t("mostLikely"), main: t.server(a.disease.name),
-      sub: u && u.level !== "none" && u.act_within ? t("actWithin", { t: t.server(u.act_within) }) : undefined,
-    };
-  }
-  if (kind === "healthy" && a.disease) return { kind, label: t("goodNews"), main: t.server(a.disease.name) };
-  if (kind === "expert" || kind === "unfamiliar")
-    return { kind, main: t(kind === "unfamiliar" ? "unfamiliar" : "heroExpert"), sub: c.status === "pending" ? t("waitingExpert") : undefined };
-  return { kind, main: t(kind === "question" ? "heroQuestion" : kind === "retake" ? "heroRetake" : "heroExpert") };
+// The first sentence of a server message, as a heading ("The photo is blurry.").
+const firstSentence = (s: string) => (s.match(/^[^.।!?]+[.।!?]?/)?.[0] ?? s).trim();
+
+function since(from: string, to: string, t: T): string | null {
+  const ms = Date.parse(to) - Date.parse(from);
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  const min = Math.round(ms / 60000);
+  if (min < 60) return t("tMinutes", { n: Math.max(1, min) });
+  const h = Math.round(min / 60);
+  if (h < 48) return h === 1 ? t("tHour") : t("tHours", { n: h });
+  return t("tDays", { n: Math.round(h / 24) });
 }
 
-const TIPS = [
-  { icon: Sun, text: "daylight" },
-  { icon: Leaf, text: "fillPhoto" },
-  { icon: Focus, text: "focus" },
-] as const;
-
-/** Leaf damage, cause, spread and signs: useful, but not the first thing to read. */
-function Details({ children }: { children: React.ReactNode }) {
-  const t = useT();
-  return (
-    <details className="group border-y border-border">
-      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 font-semibold text-ink">
-        {t("details")}
-        <ChevronDown className="h-5 w-5 text-ink-3 transition group-open:rotate-180" aria-hidden="true" />
-      </summary>
-      <div className="pb-3">{children}</div>
-    </details>
-  );
+/** Everything the big Listen button reads: the verdict, then what to do. */
+function spokenSummary(c: CaseView, kind: HeroKind, t: T): string {
+  const a = c.assessment;
+  const parts: string[] = [];
+  if (kind === "answered" && c.expert) parts.push(t("expertSays"), t.server(c.expert.name));
+  else if ((kind === "diagnosis" || kind === "healthy") && a.disease) {
+    const healthy = kind === "healthy";
+    parts.push(healthy ? t("goodNews") : t("mostLikely"), t.server(a.disease.name));
+    if (!healthy && a.urgency && a.urgency.level !== "none" && a.urgency.act_within) parts.push(t("actWithin", { t: t.server(a.urgency.act_within) }));
+    parts.push(t(healthy ? "keepHealthy" : "whatToDo"), ...actionSteps(a.disease, healthy, a.urgency?.level === "urgent").map((s, i) => `${i + 1}. ${t(s.text)}`));
+    if (!healthy && a.urgency?.why) parts.push(t.server(a.urgency.why));
+    if (!healthy) parts.push(t("notCertain"));
+  } else if (kind === "retake") {
+    parts.push(t("retakeTag"), t.server(a.message), ...TIPS.map((tip) => t(tip.text)));
+  } else if (kind === "question" && a.question) {
+    parts.push(t("oneQuestion"), t.server(a.question.text), ...a.question.options.map((o) => t.server(o)));
+  } else {
+    parts.push(t(kind === "unfamiliar" ? "unusualTag" : "heroExpert"));
+    if (c.status === "pending") parts.push(t("waitingNote"), t("waitSpray"));
+  }
+  // A full stop after each part so the voice pauses between them.
+  return parts.filter(Boolean).map((p) => (/[.।?!]$/.test(p.trim()) ? p.trim() : `${p.trim()}.`)).join(" ");
 }
 
-function ResultBody({ c }: { c: CaseView }) {
+function DontSpray({ full }: { full: boolean }) {
   const t = useT();
-  const a = c.assessment;
-  const photo = c.image ? imageUrl(c.image) : undefined;
-
-  if (a.status === "retake")
-    return (
-      <div className="space-y-4">
-        <p className="text-lg font-semibold text-soon">{t.server(a.message)}</p>
-        <ul className="divide-y divide-border border-y border-border">
-          {TIPS.map((tip) => (
-            <li key={tip.text} className="flex min-h-14 items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-ink" aria-hidden="true"><tip.icon className="h-5 w-5" /></span>
-              <span className="text-lg text-ink">{t(tip.text)}</span>
-            </li>
-          ))}
-        </ul>
+  return full ? (
+    <div className="mx-4 mt-4 flex gap-3 rounded-[20px] border-[1.5px] border-soon-solid p-4">
+      <Hand className="mt-0.5 h-[26px] w-[26px] shrink-0 text-soon" aria-hidden="true" />
+      <div>
+        <p className="text-lg font-bold text-ink">{t("dontSpray")}</p>
+        <p className="mt-0.5 text-[15px] leading-normal text-ink-2">{t("waitSpray")}</p>
       </div>
-    );
-
-  if (c.status === "expert_answered" && c.expert)
-    return (
-      <div className="space-y-5">
-        <PhotoCompare photo={photo} disease={c.expert} />
-        {hasFacts(c.expert) && <Details><DiseaseFacts d={c.expert} /></Details>}
-      </div>
-    );
-
-  if ((a.status === "diagnosis" || a.status === "healthy") && a.disease) {
-    const healthy = a.status === "healthy";
-    const urgent = a.urgency?.level === "urgent";
-    const fraction = healthy ? null : a.severity_estimate?.fraction ?? null;
-    return (
-      <div className="space-y-5">
-        <ConfidenceDots p={a.probability ?? 0} />
-        <PhotoCompare photo={photo} disease={a.disease} />
-        <ActionList steps={actionSteps(a.disease, healthy, urgent)} />
-        {!healthy && a.urgency && <UrgencyLight u={a.urgency} />}
-        {!healthy && (fraction != null || hasFacts(a.disease)) && (
-          <Details>
-            {fraction != null && <LeafDamage fraction={fraction} />}
-            <DiseaseFacts d={a.disease} />
-          </Details>
-        )}
-        {!healthy && <p className="text-sm text-ink-3">{t("notCertain")}</p>}
-        {c.audit && c.status !== "expert_answered" && (
-          <p className="flex items-center gap-2 text-sm font-semibold text-expert">
-            <UserRound className="h-5 w-5 shrink-0" aria-hidden="true" />{t("doubleCheck")}
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  // Question or expert: the photo and the shortlist (the question itself is its own section below).
-  const options = a.top.filter((o) => a.shortlist.some((s) => s.label === o.label));
-  return (
-    <div className="space-y-5">
-      <PhotoCompare photo={photo} disease={null} />
-      {a.unfamiliar && <p className="leading-relaxed text-ink-2">{t("unfamiliarT")}</p>}
-      {a.status !== "question" && (options.length > 0 ? (
-        <div>
-          <p className="font-semibold text-ink">{t("couldBe")}</p>
-          <ul className="mt-1 divide-y divide-border">
-            {options.map((o) => (
-              <li key={o.label} className="py-3">
-                <p className="font-semibold text-ink">{t.server(o.name)}</p>
-                <div className="mt-1"><ConfidenceDots p={o.probability} /></div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : (
-        <p className="text-ink-2">{t("unknownPhoto")}</p>
-      ))}
-      {c.status === "pending" && (
-        <div className="flex items-start gap-3 rounded-xl bg-expert-soft px-4 py-3 text-expert" role="status">
-          <Hourglass className="mt-0.5 h-6 w-6 shrink-0" aria-hidden="true" />
-          <div>
-            <p className="font-semibold">{t("waitingExpert")}</p>
-            <p className="text-ink-2">{t("waitingNote")}</p>
-          </div>
-        </div>
-      )}
-      {c.status === "pending" && (
-        <p className="flex items-start gap-2 leading-relaxed text-ink-2">
-          <Hand className="mt-1 h-5 w-5 shrink-0" aria-hidden="true" />{t("waitSpray")}
-        </p>
-      )}
+    </div>
+  ) : (
+    <div className="mx-4 mt-2.5 flex items-center gap-3 rounded-[18px] border-[1.5px] border-soon-solid px-4 py-3.5">
+      <Hand className="h-[22px] w-[22px] shrink-0 text-soon" aria-hidden="true" />
+      <p className="font-semibold text-ink">{t("dontSpray")}</p>
     </div>
   );
 }
 
-/** Everything the big Listen button reads: the verdict, then what to do. */
-function spokenSummary(c: CaseView, v: Verdict, t: T): string {
+/** The top of the result: what it found, in the shape of that kind of answer. */
+function ResultBody({ c, kind, meta, busy, onAnswer, onNew }: {
+  c: CaseView; kind: HeroKind; meta: Meta; busy: boolean;
+  onAnswer: (option: number | null) => void; onNew: () => void;
+}) {
+  const t = useT();
   const a = c.assessment;
-  const parts = [v.label, v.main, v.sub].filter(Boolean) as string[];
-  if ((a.status === "diagnosis" || a.status === "healthy") && a.disease && c.status !== "expert_answered") {
-    const healthy = a.status === "healthy";
-    parts.push(t("whatToDo"), ...actionSteps(a.disease, healthy, a.urgency?.level === "urgent").map((s, i) => `${i + 1}. ${t(s.text)}`));
-    if (!healthy && a.urgency?.why) parts.push(t.server(a.urgency.why));
-    if (!healthy) parts.push(t("notCertain"));
-  } else if (a.status === "retake") {
-    parts.push(t.server(a.message), ...TIPS.map((tip) => t(tip.text)));
-  } else if (a.status === "question" && a.question && c.status !== "expert_answered") {
-    parts.push(t.server(a.question.text), ...a.question.options.map((o) => t.server(o)));
-  } else if (c.status === "pending") {
-    parts.push(t("waitingNote"), t("waitSpray"));
+  const photo = c.image ? imageUrl(c.image) : undefined;
+  const listen = <ListenButton big text={spokenSummary(c, kind, t)} language={t.hi ? "Hindi" : "English"} />;
+  const pending = c.status === "pending";
+
+  if (kind === "retake")
+    return (
+      <>
+        <PhotoHero src={photo} alt={t("yourPhoto")} height={220} look="blur" />
+        <div className="px-5 pt-[22px]">
+          <Tag icon={Camera} tone="text-soon">{t("retakeTag")}</Tag>
+          <h1 className="mt-1 text-4xl font-semibold leading-[1.05] tracking-[-0.035em] text-ink">{firstSentence(t.server(a.message))}</h1>
+        </div>
+        <ul className="px-5 pt-5">
+          {TIPS.map((tip, i) => (
+            <li key={tip.text} className={`flex min-h-16 items-center gap-3.5 border-b border-border ${i ? "" : "border-t"}`}>
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-2 text-ink" aria-hidden="true"><tip.icon className="h-[22px] w-[22px]" /></span>
+              <span className="text-lg text-ink">{t(tip.text)}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="px-5 pt-5">
+          <button type="button" onClick={onNew}
+            className="flex h-[58px] w-full items-center justify-center gap-2.5 rounded-full bg-brand text-[19px] font-semibold text-on-brand hover:opacity-90">
+            <Camera className="h-[22px] w-[22px]" aria-hidden="true" />{t("takeNew")}
+          </button>
+        </div>
+      </>
+    );
+
+  if (kind === "answered" && c.expert) {
+    const note = [...c.messages].reverse().find((m) => m.role === "expert");
+    const after = note ? since(c.created_at, note.created_at, t) : null;
+    return (
+      <>
+        <div className="px-5 pt-2">
+          <Tag icon={BadgeCheck} tone="text-expert">{t("expertAnswered")}</Tag>
+          <p className="mt-2.5 text-[15px] font-semibold text-ink-3">{t("expertSays")}</p>
+          <h1 className="text-[46px] font-semibold leading-none tracking-[-0.04em] text-ink">{shortName(c.expert.name, c.crop, t)}</h1>
+        </div>
+        {note && (
+          <div className="mx-4 mt-[18px] rounded-[22px] border-[1.5px] border-expert-solid bg-surface p-4">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-expert-soft text-expert" aria-hidden="true"><UserRound className="h-5 w-5" /></span>
+              <div>
+                <p className="font-semibold text-ink">{t("agriExpert")}</p>
+                {after && <p className="text-[13px] text-ink-3">{t("answeredAfter", { t: after })}</p>}
+              </div>
+            </div>
+            <div className="mt-3 text-[17px] leading-[1.55] text-ink"><Rich text={t.server(note.text)} /></div>
+          </div>
+        )}
+        {listen}
+        <PhotoCompare photo={photo} disease={c.expert} short />
+        <MoreDetails d={c.expert} />
+      </>
+    );
   }
-  // A full stop after each part so the voice pauses between them.
-  return parts.map((p) => (/[.।?!]$/.test(p.trim()) ? p.trim() : `${p.trim()}.`)).join(" ");
+
+  if ((kind === "diagnosis" || kind === "healthy") && a.disease) {
+    const healthy = kind === "healthy";
+    const urgent = a.urgency?.level === "urgent";
+    if (healthy)
+      return (
+        <>
+          <PhotoHero src={photo} alt={t("yourPhoto")} height={220} />
+          <div className="px-5 pt-[22px]">
+            <Tag icon={CircleCheck} tone="text-ok" size={18}>{t("goodNews")}</Tag>
+            <h1 className="mt-1 text-[44px] font-semibold leading-none tracking-[-0.04em] text-ink">{t("heroHealthy")}</h1>
+            <p className="mt-2 text-[17px] leading-[1.45] text-ink-2">{t("healthyT", { crop: t.hi ? cropName(c.crop, t) : cropName(c.crop, t).toLowerCase() })}</p>
+          </div>
+          {listen}
+          <ActionList title={t("keepHealthy")} steps={actionSteps(a.disease, true, false)} />
+        </>
+      );
+    const name = shortName(a.disease.name, c.crop, t);
+    const en = englishShort(a.disease.name, c.crop);
+    return (
+      <>
+        <PhotoHero src={photo} alt={t("yourPhoto")} chip={t("yourLeaf")} />
+        <div className="px-5 pt-[22px]">
+          <p className="text-[15px] font-semibold text-ink-3">{t("mostLikely")} · {cropName(c.crop, t)}</p>
+          <h1 className="mt-0.5 text-[46px] font-semibold leading-none tracking-[-0.04em] text-ink">{name}</h1>
+          {t.hi && en !== name && <p className="text-base text-ink-3" lang="en">{en}</p>}
+          <ConfidenceBar p={a.probability ?? 0} />
+        </div>
+        {a.urgency && a.urgency.level !== "none" && <UrgencyBlock u={a.urgency} />}
+        {listen}
+        <ActionList title={t("whatToDo")} steps={actionSteps(a.disease, false, urgent)} note={t("notCertain")} />
+        <PhotoCompare photo={photo} disease={a.disease} />
+        <MoreDetails d={a.disease} fraction={a.severity_estimate?.fraction ?? null} />
+        {c.audit && (
+          <p className="mx-5 mt-4 flex items-center gap-2 text-sm font-semibold text-expert">
+            <UserRound className="h-5 w-5 shrink-0" aria-hidden="true" />{t("doubleCheck")}
+          </p>
+        )}
+      </>
+    );
+  }
+
+  if (kind === "question" && a.question)
+    return (
+      <>
+        <div className="flex items-center gap-3.5 px-5 pt-2">
+          {photo && <img src={photo} alt={t("yourPhoto")} className="h-[88px] w-[88px] shrink-0 rounded-[18px] object-cover" />}
+          <div>
+            <Tag icon={CircleHelp} tone="text-ask" size={16}>{t("almost")}</Tag>
+            <h1 className="mt-0.5 text-[28px] font-semibold leading-[1.05] tracking-[-0.03em] text-ink">{t("oneQuestion")}</h1>
+          </div>
+        </div>
+        <section aria-labelledby="q" className="rise mx-4 mt-5 rounded-[22px] border-[1.5px] border-ask-solid bg-surface p-4">
+          <h2 id="q" className="text-xl font-semibold leading-[1.3] text-ink">{t.server(a.question.text)}</h2>
+          <p className="mb-3.5 mt-1 text-[15px] text-ink-2">{t("pickClosest")}</p>
+          <div className="flex flex-col gap-2">
+            {a.question.options.map((o, i) => {
+              const Icon = optionIcon(o);
+              return (
+                <button key={o} type="button" disabled={busy} onClick={() => onAnswer(i)}
+                  className="flex min-h-[76px] items-center gap-3 rounded-2xl border border-border bg-background p-2 text-left text-[17px] font-semibold text-ink transition hover:border-ask-solid disabled:opacity-50">
+                  <span className="flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-xl bg-surface-2 text-ink-2" aria-hidden="true"><Icon className="h-[26px] w-[26px]" /></span>
+                  <span className="flex-1 leading-[1.3]">{t.server(o)}</span>
+                </button>
+              );
+            })}
+            <button type="button" disabled={busy} onClick={() => onAnswer(null)}
+              className="flex min-h-[60px] items-center gap-3 rounded-2xl p-2 text-left text-[17px] font-semibold text-ink-2 hover:bg-surface-2 disabled:opacity-50">
+              <span className="ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-expert-soft text-expert" aria-hidden="true"><UserRound className="h-[22px] w-[22px]" /></span>
+              {t("notSureExpert")}
+            </button>
+          </div>
+        </section>
+        {listen}
+      </>
+    );
+
+  const known = meta.diseases.filter((d) => !d.label.endsWith("healthy") && !d.label.endsWith("something_else")).length;
+  if (kind === "unfamiliar")
+    return (
+      <>
+        <PhotoHero src={photo} alt={t("yourPhoto")} height={220} look="dashed" />
+        <div className="px-5 pt-[22px]">
+          <Tag icon={ScanSearch} tone="text-expert">{t("unusualTag")}</Tag>
+          <h1 className="mt-1 text-[34px] font-semibold leading-[1.05] tracking-[-0.035em] text-ink">{t("unusualTitle")}</h1>
+          <p className="mt-2.5 text-[17px] leading-normal text-ink-2">{t(pending ? "unusualText" : "unusualSoon", { n: known })}</p>
+        </div>
+        {pending && (
+          <>
+            <div className="mx-4 mt-[18px] flex items-center gap-3 rounded-[18px] bg-expert-soft px-4 py-3.5" role="status">
+              <Hourglass className="h-[22px] w-[22px] shrink-0 text-expert" aria-hidden="true" />
+              <div>
+                <p className="font-semibold text-ink">{t("waitingExpert")}</p>
+                <p className="text-sm text-ink-2">{t("waitingShort")}</p>
+              </div>
+            </div>
+            <DontSpray full={false} />
+          </>
+        )}
+        {listen}
+      </>
+    );
+
+  // Sent to an expert: the progress, "don't spray yet", and what it might be.
+  const options = a.top.filter((o) => a.shortlist.some((s) => s.label === o.label));
+  const answered = c.status !== "pending";
+  return (
+    <>
+      <div className="mx-4 mt-1 rounded-[26px] bg-expert-soft px-5 py-[22px]">
+        <div className="flex items-center gap-3.5">
+          {photo && <img src={photo} alt={t("yourPhoto")} className="h-[72px] w-[72px] shrink-0 rounded-2xl object-cover" />}
+          <div>
+            <Tag icon={UserRound} tone="text-expert" size={16}>{t("heroExpert")}</Tag>
+            <h1 className="mt-0.5 text-[26px] font-semibold leading-[1.1] tracking-[-0.025em] text-ink">{t("personWill")}</h1>
+          </div>
+        </div>
+        <div className="mt-5 grid grid-cols-3 gap-1.5" role="img" aria-label={t("stWithExpert")}>
+          <div><div className="h-1 rounded-full bg-expert-solid" /><p className="mt-1.5 text-[13px] font-semibold text-ink">{t("stReceived")}</p></div>
+          <div><div className={`h-1 rounded-full bg-expert-solid ${answered ? "" : "opacity-55"}`} /><p className="mt-1.5 text-[13px] font-semibold text-expert">{t("stWithExpert")}</p></div>
+          <div><div className={`h-1 rounded-full ${answered ? "bg-expert-solid" : "bg-border"}`} /><p className="mt-1.5 text-[13px] text-ink-3">{t("stAnswer")}</p></div>
+        </div>
+        <p className="mt-3.5 text-[15px] leading-normal text-ink-2">{t("waitingNote")}</p>
+      </div>
+      {pending && <DontSpray full />}
+      {options.length > 0 ? (
+        <div className="px-5 pt-6">
+          <p className="text-lg font-semibold text-ink">{t("couldBe")}</p>
+          <Shortlist items={options} />
+        </div>
+      ) : (
+        <p className="px-5 pt-6 text-ink-2">{t("unknownPhoto")}</p>
+      )}
+      {listen}
+    </>
+  );
 }
 
 type Props = { id: number; meta: Meta; language: string; initial: CaseView | null; onNew: () => void };
@@ -270,7 +381,7 @@ export default function CaseScreen({ id, meta, language, initial, onNew }: Props
   // Waiting for an expert: check for their answer every 15 seconds (only while this tab is on screen).
   useVisiblePoll(load, 15000, c?.status === "pending" || (!!c?.audit && c.status === "answered"));
 
-  // Scroll to new chat messages, but not on first load: the farmer should see the result card first.
+  // Scroll to new chat messages, but not on first load: the farmer should see the result first.
   const seen = useRef<number | null>(null);
   useEffect(() => {
     const n = c?.messages.length ?? 0;
@@ -293,100 +404,60 @@ export default function CaseScreen({ id, meta, language, initial, onNew }: Props
     }
   };
 
-  if (!c) return error ? <p role="alert" className="rounded-xl bg-urgent-soft p-4 text-urgent">{t(error)}</p>
-    : <p className="py-10 text-center text-ink-3">{t("loadingCase")}</p>;
-  const a = c.assessment;
-  const verdict = verdictOf(c, t);
-  // The verdict is built from screen text (English or Hindi), so read it in that language.
-  const screenLanguage = t.hi ? "Hindi" : "English";
+  if (!c)
+    return error ? (
+      <p role="alert" className="mx-3 mt-2 rounded-[18px] border border-border bg-surface p-4 font-semibold text-ink">{t(error)}</p>
+    ) : <ResultSkeleton label={t("loadingCase")} />;
+
+  const kind = heroKind(c);
+  // The expert's note is shown in its own card at the top, so the chat doesn't repeat it.
+  const shownNote = kind === "answered" ? [...c.messages].reverse().find((m) => m.role === "expert") : undefined;
+  const chat = c.messages.filter((m) => m !== shownNote);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="sr-only">Your {c.crop} leaf</h1>
-        <p className="text-sm font-semibold text-ink-3">{t("checkNo")} #{c.id}</p>
-        <button type="button" onClick={onNew} className="flex min-h-12 items-center gap-2 rounded-full border border-border bg-surface px-4 font-semibold text-ink shadow-card hover:bg-surface-2">
-          <Camera className="h-5 w-5" aria-hidden="true" /> {t("newPhoto")}
-        </button>
-      </div>
+    <div className="pb-4">
+      <ResultBody c={c} kind={kind} meta={meta} busy={busy} onNew={onNew}
+        onAnswer={(option) => act(() => api.answerQuestion(c.id, option, language))} />
 
-      <div className="space-y-3">
-        <VerdictBand {...verdict} photo={c.image ? imageUrl(c.image) : undefined} />
-        <ListenButton big text={spokenSummary(c, verdict, t)} language={screenLanguage} />
-      </div>
-
-      {a.status === "question" && a.question && c.status !== "expert_answered" && (
-        <section aria-labelledby="q" className="rise rounded-2xl border-2 border-ask bg-surface p-5 shadow-card">
-          <p className="flex items-center gap-2 text-sm font-semibold text-ask">
-            <CircleHelp className="h-5 w-5" aria-hidden="true" />{t("lookClosely")}
-          </p>
-          <div className="mb-4 mt-3"><ReferencePhotos diseases={a.shortlist} /></div>
-          <h2 id="q" className="text-lg font-semibold leading-snug text-ink">{t.server(a.question.text)}</h2>
-          <div className="mt-3 grid gap-2">
-            {a.question.options.map((o, i) => {
-              const Icon = optionIcon(o);
+      {c.ask_extent && c.status !== "expert_answered" && (
+        <section aria-labelledby="ext" className="rise mx-4 mt-[22px] rounded-[20px] border border-border bg-surface p-4">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-ask"><CircleHelp className="h-[18px] w-[18px]" aria-hidden="true" />{t("oneQuestionTag")}</p>
+          <h2 id="ext" className="mb-1 mt-1 text-lg font-semibold leading-normal text-ink">{t.server(meta.extent_question.text)}</h2>
+          <p className="mb-3 text-sm text-ink-3">{t("extentWhy")}</p>
+          <div className="grid grid-cols-3 gap-2">
+            {meta.extent_question.options.map((o) => {
+              const Icon = extentIcon(o.value);
               return (
-                <button key={o} type="button" disabled={busy} onClick={() => act(() => api.answerQuestion(c.id, i, language))}
-                  className="flex min-h-16 w-full items-center gap-3 rounded-2xl border-2 border-border bg-surface px-3 py-2 text-left font-semibold text-ink transition hover:-translate-y-0.5 hover:border-ask hover:bg-ask-soft disabled:opacity-50">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-2 text-ink" aria-hidden="true"><Icon className="h-6 w-6" /></span>
-                  <span className="leading-snug">{t.server(o)}</span>
+                <button key={o.value} type="button" disabled={busy} onClick={() => act(() => api.answerExtent(c.id, o.value))}
+                  className="flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-[14px] border border-border px-1.5 py-2 text-center text-[15px] font-semibold leading-[1.3] text-ink transition hover:border-ask-solid disabled:opacity-50">
+                  <Icon className="h-[18px] w-[18px]" aria-hidden="true" />{t.server(o.text)}
                 </button>
               );
             })}
-            <button type="button" disabled={busy} onClick={() => act(() => api.answerQuestion(c.id, null, language))}
-              className="flex min-h-16 w-full items-center gap-3 rounded-xl px-3 py-2 text-left font-semibold text-ink-2 hover:bg-surface-2 disabled:opacity-50">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-expert-soft text-expert" aria-hidden="true"><UserRound className="h-6 w-6" /></span>
-              {t("notSureExpert")}
-            </button>
           </div>
         </section>
       )}
 
-      <ResultBody c={c} />
-
-      {c.ask_extent && c.status !== "expert_answered" && (
-        <section aria-labelledby="ext" className="rise rounded-2xl border-2 border-ask bg-surface p-5 shadow-card">
-          <h2 id="ext" className="text-lg font-semibold leading-snug text-ink">{t.server(meta.extent_question.text)}</h2>
-          <p className="text-sm text-ink-3">{t("extentWhy")}</p>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {meta.extent_question.options.map((o) => (
-              <button key={o.value} type="button" disabled={busy} onClick={() => act(() => api.answerExtent(c.id, o.value))}
-                className="flex min-h-24 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-border px-2 py-3 text-center text-sm font-semibold leading-snug text-ink transition hover:border-ask hover:bg-ask-soft disabled:opacity-50">
-                <ExtentIcon value={o.value} />
-                {t.server(o.text)}
-              </button>
-            ))}
-          </div>
+      {(chat.length > 0 || kind !== "retake") && (
+        <section aria-labelledby="chat" className="flex flex-col gap-3 px-4 pt-[26px]" aria-live="polite">
+          <h2 id="chat" className="text-xl font-semibold tracking-[-0.01em] text-ink">{t("askAbout")}</h2>
+          {chat.map((m, i) => <Bubble key={i} m={m} language={language} />)}
+          {busy && (
+            <div className="flex items-end gap-2">
+              <Mark size={30} corners={false} />
+              <div className="rounded-[18px_18px_18px_4px] border border-border bg-surface px-3.5 py-3">
+                <span className="dot-pulse text-ink-3" aria-label={t("writing")}><span>●</span> <span>●</span> <span>●</span></span>
+              </div>
+            </div>
+          )}
+          <div ref={endRef} />
         </section>
       )}
 
-      {a.status === "retake" && (
-        <button type="button" onClick={onNew} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-brand text-lg font-semibold text-on-brand shadow-glow hover:brightness-110">
-          <Camera className="h-6 w-6" aria-hidden="true" /> {t("takeNew")}
-        </button>
-      )}
+      {error && <p role="alert" className="mx-4 mt-3 rounded-[18px] border border-border bg-surface p-3 font-semibold text-urgent">{t(error)}</p>}
 
-      <section aria-label="Conversation" className="space-y-3 border-t border-border pt-5" aria-live="polite">
-        <h2 className="text-lg font-semibold text-ink">{t("chat")}</h2>
-        {c.messages.map((m, i) => <Bubble key={i} m={m} language={language} />)}
-        {busy && (
-          <div className="flex justify-start"><div className="rounded-xl border border-border bg-surface px-4 py-3">
-            <span className="dot-pulse text-ink-3" aria-label={t("writing")}><span>●</span> <span>●</span> <span>●</span></span>
-          </div></div>
-        )}
-        <div ref={endRef} />
-      </section>
-
-      {error && <p role="alert" className="rounded-xl bg-urgent-soft p-3 text-urgent">{t(error)}</p>}
-
-      {busy && (
-        <div role="status" className="sticky bottom-24 z-10 mx-auto flex w-fit items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-background">
-          <LoaderCircle className="spin h-4 w-4" aria-hidden="true" /> {t("writing")}
-        </div>
-      )}
-
-      {a.status !== "retake" && (
-        <form className="sticky bottom-3 flex gap-2 rounded-2xl border border-border bg-surface/95 p-2 shadow-card backdrop-blur"
+      {kind !== "retake" && (
+        <form className="sticky bottom-3 z-10 mx-3 mt-6 flex gap-2 rounded-full border border-border bg-surface py-1.5 pl-[18px] pr-1.5 shadow-float"
           onSubmit={(e) => {
             e.preventDefault();
             const q = text.trim();
@@ -396,12 +467,11 @@ export default function CaseScreen({ id, meta, language, initial, onNew }: Props
             act(() => api.ask(c.id, q, language), () => setText((cur) => cur || q));
           }}>
           <label htmlFor="ask" className="sr-only">{t("askPlaceholder")}</label>
-          <input id="ask" value={text} onChange={(e) => setText(e.target.value)} maxLength={1000}
-            placeholder={t("askPlaceholder")}
-            className="min-h-12 min-w-0 flex-1 rounded-lg bg-transparent px-3 text-ink outline-none placeholder:text-ink-3" />
-          <button type="submit" disabled={busy || !text.trim()}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand text-on-brand enabled:shadow-glow disabled:opacity-40" aria-label={t("send")}>
-            <Send className="h-5 w-5" aria-hidden="true" />
+          <input id="ask" value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} placeholder={t("askPlaceholder")}
+            className="h-12 min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-ink-3" />
+          <button type="submit" disabled={busy || !text.trim()} aria-label={t("send")}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand text-on-brand transition disabled:opacity-40">
+            <ArrowUp className="h-[22px] w-[22px]" aria-hidden="true" />
           </button>
         </form>
       )}

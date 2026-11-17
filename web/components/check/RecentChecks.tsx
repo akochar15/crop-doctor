@@ -9,13 +9,13 @@ export default function RecentChecks() {
   const t = useT();
   if (!ids.length) return null;
   return (
-    <section aria-labelledby="recent" className="border-t border-border pt-5">
+    <section aria-labelledby="recent" className="mx-5 mb-8 border-t border-border pt-5">
       <h2 id="recent" className="text-lg font-semibold text-ink">{t("recentChecks")}</h2>
       <ul className="mt-3 flex flex-wrap gap-2">
         {ids.map((id) => (
           <li key={id}>
             <Link href={`/check?case=${id}`}
-              className="flex min-h-12 items-center rounded-xl border border-border bg-surface px-4 font-semibold text-ink hover:bg-surface-2">
+              className="flex min-h-12 items-center rounded-full border border-border bg-surface px-4 font-semibold text-ink hover:bg-surface-2">
               {t("checkNo")} #{id}
             </Link>
           </li>

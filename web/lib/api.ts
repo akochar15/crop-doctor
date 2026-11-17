@@ -79,7 +79,10 @@ export type CalibrationRun = {
 };
 export type Trust = { current: CalibrationRun | null; since_reset: CalibrationRun[]; all: CalibrationRun[] };
 export type Answered = {
-  cases: { id: number; crop: string; audit: boolean; assistant: Disease | null; expert: Disease | null; agree: boolean; answered_at: string }[];
+  cases: {
+    id: number; crop: string; audit: boolean; assistant: Disease | null; expert: Disease | null; agree: boolean; answered_at: string;
+    image?: string; note?: string;   // added with the redesign; an older server leaves them out
+  }[];
   retraining_pool: number;
   audits: number;
   audit_accuracy: number | null;
@@ -89,6 +92,7 @@ export type Answered = {
 // farmer screens show a translated text from errorKey() instead.
 export const OFFLINE = 0;
 export const TIMEOUT = -1;
+export const CANCELLED = -2;
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -188,16 +192,21 @@ async function request<T>(path: string, init: RequestInit = {}, expert = false):
   }
 }
 
-/** POST /api/cases with real upload progress (fetch can't report it). onProgress gets 0..1; onSent fires when
- * the photo is fully sent and the server starts checking it. */
-function uploadCase(form: FormData, onProgress?: (fraction: number) => void, onSent?: () => void): Promise<CaseView> {
+/** POST /api/cases with real upload progress (fetch can't report it). onProgress gets 0..1 and the bytes; onSent
+ * fires when the photo is fully sent and the server starts checking it. */
+function uploadCase(
+  form: FormData,
+  onProgress?: (fraction: number, loaded: number, total: number) => void,
+  onSent?: () => void,
+  signal?: AbortSignal,
+): Promise<CaseView> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${API_URL}/api/cases`);
     xhr.timeout = UPLOAD_TIMEOUT_MS;
     xhr.setRequestHeader("X-Session-Id", sessionId());
     xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable && e.total > 0) onProgress?.(e.loaded / e.total);
+      if (e.lengthComputable && e.total > 0) onProgress?.(e.loaded / e.total, e.loaded, e.total);
     };
     xhr.upload.onload = () => onSent?.();
     xhr.onerror = () => reject(new ApiError(OFFLINE, "Can't reach the server"));
@@ -211,6 +220,12 @@ function uploadCase(form: FormData, onProgress?: (fraction: number) => void, onS
       const detail = (body as { detail?: unknown } | null)?.detail;
       reject(new ApiError(xhr.status, typeof detail === "string" ? detail : xhr.statusText || "Something went wrong"));
     };
+    // Cancel: stop the upload. Rejects with CANCELLED, which the screen treats as "go back", not as an error.
+    if (signal?.aborted) return reject(new ApiError(CANCELLED, "Cancelled"));
+    signal?.addEventListener("abort", () => {
+      xhr.abort();
+      reject(new ApiError(CANCELLED, "Cancelled"));
+    }, { once: true });
     xhr.send(form);
   });
 }
