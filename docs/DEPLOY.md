@@ -39,7 +39,8 @@ Render > `crop-doctor-api` > **Environment** > **Add Environment Variable**: nam
 from Google AI Studio > **Save** (the server restarts). Check https://crop-doctor-api-fz3n.onrender.com/api/meta shows
 `"llm_provider":"gemini"`. Never put the key in code, git or chat. If replies stop being AI-written, the key is
 missing, wrong or out of quota: the app falls back to template replies by itself. Optional `GEMINI_MODEL` picks
-another model (default `gemini-3.6-flash`).
+another model (default `gemini-3.8-flash`); `GEMINI_FALLBACK_MODELS` (default
+`gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash-lite`) are tried in turn when it is busy.
 
 ## 3. Vercel: the website (live at https://crop-doctor-snowy.vercel.app)
 
