@@ -34,6 +34,17 @@ def main() -> None:
         extra = {"unknownNamedBefore": e10["v2"]["unknown_heldout"]["all"]["named_one_known"],
                  "unknownNamedNow": e10["v3"]["unknown_heldout"]["all"]["named_one_known"],
                  "unknownToExpert": e10["v3"]["unknown_heldout"]["all"]["expert"]}
+    if "exp12" in app["checkpoint"] and (M / "exp12_app_model.json").exists():
+        # The app runs Exp 12 (v3 + leaf cut-outs): its numbers on the same 1,306 test photos, as served (ONNX).
+        e12 = json.loads((M / "exp12_app_model.json").read_text())
+        e10 = json.loads((M / "exp10_something_else.json").read_text())
+        ft, src = e12["field_test"], e12["field_test"]["by_source"]
+        model = {"acc": ft["accuracy"], "cov": ft["coverage"], "set": ft["avg_set_size"],
+                 "pd_acc": src["plantdoc"]["accuracy"], "tz_acc": src["tanzania"]["accuracy"],
+                 "pd_cov": src["plantdoc"]["coverage"], "tz_cov": src["tanzania"]["coverage"]}
+        extra = {"unknownNamedBefore": e10["v2"]["unknown_heldout"]["all"]["named_one_known"],
+                 "unknownNamedNow": e12["unknown_heldout"]["named_one_known"],
+                 "unknownToExpert": e12["unknown_heldout"]["expert"]}
     r = {
         "labAccuracy": e1["lab_test"]["accuracy"],
         "labOnlyFieldAccuracy": e1["field_test"]["accuracy"],
