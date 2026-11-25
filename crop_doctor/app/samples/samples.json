@@ -13,7 +13,7 @@
     "title": "Potato leaf (clear case)",
     "crop": "potato",
     "true_label": "potato_early_blight",
-    "seed": 31,
+    "seed": 0,
     "expected_status": "diagnosis",
     "source": "plantdoc/train/Potato leaf early blight/potato_early-blight_01_zoom.jpg"
   },

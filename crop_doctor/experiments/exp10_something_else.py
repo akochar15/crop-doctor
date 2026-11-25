@@ -47,7 +47,8 @@ from crop_doctor.uncertainty.conformal import evaluate_sets, group_prediction_se
 V3 = config.ROOT / "crop_doctor" / "data" / "splits_v3"
 CACHE = config.OUTPUTS_DIR / "cache_exp10"
 OTHER = "tomato_something_else"
-MODELS = {"v2": "final_v2_convnext_tiny.pt", "v3": "final_v3_convnext_tiny.pt"}
+# exp12 = v3 + PlantDoc leaf cut-outs (crop_doctor/model/train_leaves.py), the model the app runs since Exp 12.
+MODELS = {"v2": "final_v2_convnext_tiny.pt", "v3": "final_v3_convnext_tiny.pt", "exp12": "exp12_leaf_crops.pt"}
 ALPHA = 0.1
 MIN_DROP, MAX_ACC_DROP, MIN_COVERAGE = 0.10, 0.01, 0.885
 
@@ -104,7 +105,7 @@ def main() -> None:
         t = fit_temperature(L["field_cal"], cal_y)
         qhat = group_quantiles(softmax(L["field_cal"], t), cal_y, crops_from_labels(cal_y, classes), ALPHA,
                                uniform_noise(len(cal_y), 7))
-        o = other if tag == "v3" else None
+        o = None if tag == "v2" else other   # v2 has no "something else" class
         r = {"temperature": t, "qhat": qhat}
 
         def run(name, crops, seed):

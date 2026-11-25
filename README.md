@@ -30,11 +30,11 @@ On **1,306 held-out field photos** (never used for training or calibration):
 
 | | Result |
 |---|---|
-| First answer right | **86.5%** (PlantDoc 63.7%, Tanzania 99.5%) |
-| Shortlist contains the right disease (target 90%) | **90.5%** |
-| Average shortlist length | 1.66 diseases |
+| First answer right | **87.7%** (PlantDoc 66.8%, Tanzania 99.6%) |
+| Shortlist contains the right disease (target 90%) | **90.8%** |
+| Average shortlist length | 1.56 diseases |
 | Whole assistant: photos answered without an expert | **73.0%**, of which **95.3%** are right |
-| Never-seen tomato problems given a confident wrong answer | 53.9% → **18.9%** with a "something else" class |
+| Never-seen tomato problems given a confident wrong answer | 53.9% → **20.8%** with a "something else" class |
 
 The headline research finding: calibrated on lab photos, the "90% shortlist" contains the right disease only
 **31.7%** of the time on farm photos; about **50 expert-labelled field photos** make the 90% promise dependable.
@@ -124,6 +124,7 @@ Datasets (~1.7 GB) download into `datasets/` (git-ignored). Each experiment writ
 | Exp 9 | `crop_doctor.experiments.exp9_unfamiliar` | can confidence spot unknown diseases? (no) |
 | Exp 10 | `crop_doctor.model.train_v2 --splits splits_v3 --tag final_v3_convnext_tiny`, `crop_doctor.experiments.exp10_something_else` | a "something else" class |
 | Exp 11 | `crop_doctor.experiments.exp11_label_strategy` | uncertainty-picked vs random expert labels |
+| Exp 12 | `crop_doctor.model.train_leaves` ([Colab notebook](notebooks/exp12_leaf_crops_colab.ipynb)) | train on PlantDoc leaf cut-outs: PlantDoc 63.7% → 66.8%; the app's model since Exp 12 |
 | Audit | `crop_doctor.data.near_duplicates` | resized or rotated twins across splits |
 | Ship | `crop_doctor.model.export_onnx` | package the model for the server |
 

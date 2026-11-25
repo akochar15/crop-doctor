@@ -22,25 +22,25 @@
     "monitor": "field_test"
   },
   "mondrian": "crop",
-  "temperature": 1.652091832763256,
+  "temperature": 1.6112372792000245,
   "qhat": {
     "0.1": {
-      "potato": 0.8771351152343201,
-      "tomato": 0.9514614390735799
+      "potato": 0.87984368070852,
+      "tomato": 0.9516754952618406
     },
     "0.2": {
-      "potato": 0.7748667840000202,
-      "tomato": 0.9158894599685083
+      "potato": 0.7892321358339109,
+      "tomato": 0.889195266339945
     }
   },
   "default_alpha": 0.1,
   "calibrated_on": "field_cal",
-  "source_checkpoint": "final_v3_convnext_tiny.pt",
+  "source_checkpoint": "exp12_leaf_crops.pt",
   "check": {
     "top1_agreement_with_pytorch": 1.0,
-    "field_test_accuracy_pytorch": 0.8652373660030628,
-    "field_test_accuracy_onnx": 0.8652373660030628,
-    "field_test_coverage_90": 0.9050535987748851,
-    "field_test_avg_set_size": 1.6623277182235834
+    "field_test_accuracy_pytorch": 0.8767228177641654,
+    "field_test_accuracy_onnx": 0.8767228177641654,
+    "field_test_coverage_90": 0.9081163859111792,
+    "field_test_avg_set_size": 1.563552833078101
   }
 }

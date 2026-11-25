@@ -1,0 +1,39 @@
+{
+  "model": "exp12_leaf_crops.pt (v3 + PlantDoc leaf cut-outs), ONNX as served",
+  "how": "field_test numbers: server/assets/logits/field_test.npz with the app's temperature and per-crop q-hat (alpha 0.1, noise seed 12345), same procedure as crop_doctor/model/export_onnx.py",
+  "field_test": {
+    "photos": 1306,
+    "accuracy": 0.8767,
+    "coverage": 0.9081,
+    "avg_set_size": 1.5636,
+    "empty_rate": 0.059,
+    "answered_rate": 0.6876,
+    "answered_accuracy": 0.9655,
+    "by_source": {
+      "plantdoc": {
+        "photos": 476,
+        "accuracy": 0.6681,
+        "coverage": 0.9097,
+        "avg_set_size": 2.6744,
+        "empty_rate": 0.0021,
+        "answered_rate": 0.334,
+        "answered_accuracy": 0.8113
+      },
+      "tanzania": {
+        "photos": 830,
+        "accuracy": 0.9964,
+        "coverage": 0.9072,
+        "avg_set_size": 0.9265,
+        "empty_rate": 0.0916,
+        "answered_rate": 0.8904,
+        "answered_accuracy": 0.9986
+      }
+    }
+  },
+  "unknown_heldout": {
+    "named_one_known": 0.208,
+    "something_else_top": 0.519,
+    "expert": 0.55,
+    "source": "Exp 10 rerun in Colab with exp12 added (crop_doctor/experiments/exp10_something_else.py); values copied from its printed summary (3 decimals). v3 on the same photos: 0.189 / 0.543 / 0.571"
+  }
+}
